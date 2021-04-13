@@ -28,12 +28,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kz.curs.testappjava.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     private static final int RECORDING_TIME = 5000;
     private static final int SCANNING_INTERVAL = 500;
@@ -123,7 +126,9 @@ public class MainActivity extends AppCompatActivity {
     private double getAmplitude(short[] buffer) {
         int bufferSize = buffer.length;
         double average = 0.0;
+        Log.e(TAG, "Amplitude size" + buffer.length);
         for (short s : buffer){
+            Log.e(TAG, "Buffer item: " + s);
             if(s>0) {
                 average += Math.abs(s);
             }
@@ -131,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
                 bufferSize--;
             }
         }
+        Log.e(TAG, "Taken into account: " + bufferSize);
         //x=max;
         double x = average/bufferSize;
         double db=0;
@@ -165,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
         if(recorder != null)
             stopRecording();
         recorder = new MediaRecorder();
-        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION);
+        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION   );
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         recorder.setOutputFile(createRecordFile());
