@@ -48,7 +48,7 @@ public class AudioReceiver implements Runnable {
 
         short[][] buffers = new short[BUFF_COUNT][buffSize >> 1];
 
-        recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat(), buffSize * 10);
+        recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat(), buffSize * 10);
 
         if(recorder.getState() != AudioRecord.STATE_INITIALIZED){
             System.err.println("getState() != STATE_INITIALIZED");

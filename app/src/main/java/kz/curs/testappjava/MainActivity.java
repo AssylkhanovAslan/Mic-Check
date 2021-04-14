@@ -54,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private File referenceRecord;
     private boolean isRecording = false;
 
+    private boolean isMaxSet = false;
+    private int max_val = Short.MIN_VALUE;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,25 +66,26 @@ public class MainActivity extends AppCompatActivity {
         listener.addHandler(listenerHandler);
 
         binding.buttonRecord.setOnClickListener((v) -> {
-            if(!isListening) {
+            if (!isListening) {
                 if (!checkPermissions())
                     requestPermissions();
                 else
                     startListening();
-            } else{
+            } else {
+                isMaxSet = true;
                 stopListening();
                 stopRecording();
             }
         });
     }
 
-    private boolean checkPermissions(){
+    private boolean checkPermissions() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void requestPermissions(){
+    private void requestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_CODE);
         }
@@ -89,9 +93,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(requestCode == PERMISSIONS_REQUEST_CODE){
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
             for (int result : grantResults)
-                if(result != PackageManager.PERMISSION_GRANTED)
+                if (result != PackageManager.PERMISSION_GRANTED)
                     return;
 
             startListening();
@@ -102,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
 
     //region Listener
 
-    private void startListening(){
+    private void startListening() {
         listenerExecutor.execute(listener::run);
         binding.imageRecord.setVisibility(View.VISIBLE);
         isListening = true;
@@ -110,15 +114,29 @@ public class MainActivity extends AppCompatActivity {
 
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
+        Log.e(TAG, "Msg received");
+        short[] amplitudes = ((short[]) msg.obj);
+        for (short amplitude : amplitudes) {
+            if (Math.abs(amplitude) > max_val) {
+                if (isMaxSet) {
+                    binding.textDecibels.setText("Вы шумите!");
+                } else {
+                    binding.textDecibels.setText(String.valueOf(max_val));
+                    max_val = Math.abs(amplitude);
+                    Log.e(TAG, String.valueOf(max_val));
+                }
+            }
 
-        double db = getDecibels((int)getAmplitude((short[])msg.obj));
-        binding.textDecibels.setText(String.valueOf(db));
-        if(db > referenceDb){
-            if(isRecording)
-                continueRecording();
-            else
-                startRecording();
         }
+
+//        double db = getDecibels((int)getAmplitude((byte[])msg.obj));
+//        binding.textDecibels.setText(String.valueOf(db));
+//        if(db > referenceDb){
+//            if(isRecording)
+//                continueRecording();
+//            else
+//                startRecording();
+//        }
         return true;
     });
     public static double REFERENCE = 0.00002;
@@ -127,27 +145,29 @@ public class MainActivity extends AppCompatActivity {
         int bufferSize = buffer.length;
         double average = 0.0;
         Log.e(TAG, "Amplitude size" + buffer.length);
-        for (short s : buffer){
-            Log.e(TAG, "Buffer item: " + s);
-            if(s>0) {
-                average += Math.abs(s);
+        int max = Short.MIN_VALUE;
+        for (short s : buffer) {
+
+            average += Math.abs(s);
+            if (max < Math.abs(s)) {
+                max = Math.abs(s);
             }
-            else {
-                bufferSize--;
-            }
+
         }
         Log.e(TAG, "Taken into account: " + bufferSize);
+
+        Log.e(TAG, "Max val: " + max);
         //x=max;
-        double x = average/bufferSize;
-        double db=0;
-        if (x==0){
+        double x = average / bufferSize;
+        double db = 0;
+        if (x == 0) {
             return 0;
         }
         // calculating the pascal pressure based on the idea that the max amplitude (between 0 and 32767) is
         // relative to the pressure
-        double pressure = x/51805.5336; //the value 51805.5336 can be derived from asuming that x=32767=0.6325 Pa and x=1 = 0.00002 Pa (the reference value)
-        db = (20 * Math.log10(pressure/REFERENCE));
-        if(db>0) {
+        double pressure = x / 51805.5336; //the value 51805.5336 can be derived from asuming that x=32767=0.6325 Pa and x=1 = 0.00002 Pa (the reference value)
+        db = (20 * Math.log10(pressure / REFERENCE));
+        if (db > 0) {
             return db;
         }
         return 0;
@@ -157,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
         return amplitude;
     }
 
-    private void stopListening(){
+    private void stopListening() {
         listener.stop();
         binding.imageRecord.setVisibility(View.GONE);
         isListening = false;
@@ -167,11 +187,11 @@ public class MainActivity extends AppCompatActivity {
 
     //region Recorder
 
-    private void startRecording(){
-        if(recorder != null)
+    private void startRecording() {
+        if (recorder != null)
             stopRecording();
         recorder = new MediaRecorder();
-        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION   );
+        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         recorder.setOutputFile(createRecordFile());
@@ -198,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final SimpleDateFormat recordNameFormat = new SimpleDateFormat("ddMMyyHHmm", Locale.getDefault());
 
-    private void continueRecording(){
+    private void continueRecording() {
         recorderHandler.removeCallbacks(stopRunnable);
         recorderHandler.postDelayed(stopRunnable, RECORDING_TIME);
     }
@@ -208,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable stopRunnable = this::stopRecording;
 
     private void stopRecording() {
-        if(recorder == null)
+        if (recorder == null)
             return;
         recorderHandler.removeCallbacks(stopRunnable);
         recorder.stop();
@@ -216,8 +236,8 @@ public class MainActivity extends AppCompatActivity {
         recorder = null;
         binding.imageRecord.setSelected(false);
         float duration = getAudioDuration(currentRecord.getPath());
-        if(duration < 10){
-            if(referenceRecord == null)
+        if (duration < 10) {
+            if (referenceRecord == null)
                 saveRecord(duration);
             else
                 currentRecord.delete();
@@ -241,18 +261,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void saveRecord(float duration){
+    private void saveRecord(float duration) {
         File renamedFile = createRecordFile(duration);
-        if(!currentRecord.renameTo(renamedFile))
+        if (!currentRecord.renameTo(renamedFile))
             renamedFile = currentRecord;
-        if(referenceRecord == null)
+        if (referenceRecord == null)
             referenceRecord = renamedFile;
         else
             recordFiles.add(renamedFile);
     }
 
-    private File createRecordFile(float duration){
-        return new File(getExternalCacheDir(), String.format("%s_%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size(), (long)duration));
+    private File createRecordFile(float duration) {
+        return new File(getExternalCacheDir(), String.format("%s_%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size(), (long) duration));
     }
 
     //endregion
