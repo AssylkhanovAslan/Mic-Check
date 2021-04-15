@@ -1,14 +1,11 @@
 package kz.curs.testappjava;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
-import android.media.AudioRecord;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,14 +18,17 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -54,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private File referenceRecord;
     private boolean isRecording = false;
 
+    private File signalFile;
+    private String audioFileName;
+    private BufferedWriter bufferedWriter;
     private boolean isMaxSet = false;
     private int max_val = Short.MIN_VALUE;
 
@@ -69,12 +72,20 @@ public class MainActivity extends AppCompatActivity {
             if (!isListening) {
                 if (!checkPermissions())
                     requestPermissions();
-                else
+                else {
+                    startRecording();
                     startListening();
+                    createSignalFile();
+                }
             } else {
                 isMaxSet = true;
                 stopListening();
                 stopRecording();
+                try {
+                    bufferedWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
@@ -114,9 +125,14 @@ public class MainActivity extends AppCompatActivity {
 
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
-        Log.e(TAG, "Msg received");
         short[] amplitudes = ((short[]) msg.obj);
+        Log.e(TAG, "Msg received" + Arrays.toString(amplitudes));
         for (short amplitude : amplitudes) {
+            try {
+                bufferedWriter.write(String.valueOf(amplitude) + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             if (Math.abs(amplitude) > max_val) {
                 if (isMaxSet) {
                     binding.textDecibels.setText("Вы шумите!");
@@ -211,8 +227,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String createRecordFile() {
-        File file = new File(getExternalCacheDir(), String.format("%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size()));
+        audioFileName = String.format("Audio. %s.mp3", recordNameFormat.format(new Date()));
+        File file = new File(getExternalCacheDir(), audioFileName);
+        try {
+            Log.e(TAG, "Audio filed created = " + file.createNewFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         currentRecord = file;
+        return file.getPath();
+    }
+
+    private String createSignalFile() {
+        File file = new File(getExternalCacheDir(), String.format("Signal. %s.txt", recordNameFormat.format(new Date())));
+        try {
+            if (file.createNewFile()) {
+                Log.e(TAG, "File created");
+                signalFile = file;
+                bufferedWriter = new BufferedWriter(new FileWriter(signalFile));
+            } else {
+                Log.e(TAG, "File creation failed");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.e(TAG, file.getAbsolutePath());
+        Log.e(TAG, file.getPath());
         return file.getPath();
     }
 
@@ -235,15 +275,18 @@ public class MainActivity extends AppCompatActivity {
         recorder.release();
         recorder = null;
         binding.imageRecord.setSelected(false);
-        float duration = getAudioDuration(currentRecord.getPath());
-        if (duration < 10) {
-            if (referenceRecord == null)
-                saveRecord(duration);
-            else
-                currentRecord.delete();
-        } else {
-            saveRecord(duration);
-        }
+//
+//        File file = new File(getExternalCacheDir(), String.format("%s_%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size(), (long) duration))
+
+//        float duration = getAudioDuration(currentRecord.getPath());
+//        if (duration < 10) {
+//            if (referenceRecord == null)
+//                saveRecord(duration);
+//            else
+//                currentRecord.delete();
+//        } else {
+//            saveRecord(duration);
+//        }
         currentRecord = null;
         isRecording = false;
     }
