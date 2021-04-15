@@ -127,6 +127,9 @@ public class MainActivity extends AppCompatActivity {
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
         short[] amplitudes = ((short[]) msg.obj);
         Log.e(TAG, "Msg received" + Arrays.toString(amplitudes));
+        if (!isRecording) {
+            return true;
+        }
         for (short amplitude : amplitudes) {
             try {
                 bufferedWriter.write(String.valueOf(amplitude) + "\n");
