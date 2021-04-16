@@ -5,11 +5,15 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Process;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AudioReceiver implements Runnable {
+
+    private static final String TAG = AudioReceiver.class.getSimpleName();
+    private static final int BUFF_SIZE = 3675;
 
     private final AudioFormatInfo formatInfo;
 
@@ -30,6 +34,7 @@ public class AudioReceiver implements Runnable {
         mIsRunning = true;
 
         int buffSize = AudioRecord.getMinBufferSize(formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat());
+        Log.e(TAG, "Buff size" + buffSize);
 
         if(buffSize == AudioRecord.ERROR){
             System.err.println("getMinBufferSize returned ERROR");
@@ -46,7 +51,7 @@ public class AudioReceiver implements Runnable {
             return;
         }
 
-        short[][] buffers = new short[BUFF_COUNT][buffSize >> 1];
+        short[][] buffers = new short[BUFF_COUNT][BUFF_SIZE];
 
         recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat(), buffSize * 10);
 

@@ -8,6 +8,7 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -59,6 +60,23 @@ public class MainActivity extends AppCompatActivity {
     private BufferedWriter bufferedWriter;
     private boolean isMaxSet = false;
     private int max_val = Short.MIN_VALUE;
+    private long samplesCollected = 0;
+
+
+    public final static int TIME_OTP_RESEND_WAIT = 120;
+    public final static int MILLISECONDS_PER_SECOND = 1000;
+    public final static int SECONDS_PER_MINUTE = 60;
+    public static final int RECORD_TIME = 61;
+
+    private CountDownTimer timer = new CountDownTimer(RECORD_TIME * MILLISECONDS_PER_SECOND, MILLISECONDS_PER_SECOND) {
+        public void onTick(long millisUntilFinished) {
+            binding.tvTimer.setText(String.format("Seconds left = %s", millisUntilFinished / MILLISECONDS_PER_SECOND));
+        }
+
+        public void onFinish() {
+            stop();
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -70,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
         binding.buttonRecord.setOnClickListener((v) -> {
             if (!isListening) {
+                samplesCollected = 0;
                 if (!checkPermissions())
                     requestPermissions();
                 else {
@@ -77,17 +96,22 @@ public class MainActivity extends AppCompatActivity {
                     startListening();
                     createSignalFile();
                 }
+                timer.start();
             } else {
-                isMaxSet = true;
-                stopListening();
-                stopRecording();
-                try {
-                    bufferedWriter.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                stop();
             }
         });
+    }
+
+    private void stop() {
+        isMaxSet = true;
+        stopListening();
+        stopRecording();
+        try {
+            bufferedWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean checkPermissions() {
@@ -126,27 +150,29 @@ public class MainActivity extends AppCompatActivity {
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
         short[] amplitudes = ((short[]) msg.obj);
-        Log.e(TAG, "Msg received" + Arrays.toString(amplitudes));
-        if (!isRecording) {
-            return true;
-        }
-        for (short amplitude : amplitudes) {
-            try {
-                bufferedWriter.write(String.valueOf(amplitude) + "\n");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            if (Math.abs(amplitude) > max_val) {
-                if (isMaxSet) {
-                    binding.textDecibels.setText("Вы шумите!");
-                } else {
-                    binding.textDecibels.setText(String.valueOf(max_val));
-                    max_val = Math.abs(amplitude);
-                    Log.e(TAG, String.valueOf(max_val));
-                }
-            }
-
-        }
+        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
+        samplesCollected += amplitudes.length;
+        binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
+//        if (!isRecording) {
+//            return true;
+//        }
+//        for (short amplitude : amplitudes) {
+//            try {
+//                bufferedWriter.write(String.valueOf(amplitude) + "\n");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            if (Math.abs(amplitude) > max_val) {
+//                if (isMaxSet) {
+//                    binding.textDecibels.setText("Вы шумите!");
+//                } else {
+//                    binding.textDecibels.setText(String.valueOf(max_val));
+//                    max_val = Math.abs(amplitude);
+//                    Log.e(TAG, String.valueOf(max_val));
+//                }
+//            }
+//
+//        }
 
 //        double db = getDecibels((int)getAmplitude((byte[])msg.obj));
 //        binding.textDecibels.setText(String.valueOf(db));
