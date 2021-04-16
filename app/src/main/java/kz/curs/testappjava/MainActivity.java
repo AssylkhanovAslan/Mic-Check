@@ -21,19 +21,22 @@ import androidx.core.app.ActivityCompat;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kz.curs.testappjava.databinding.ActivityMainBinding;
+
+import static kz.curs.testappjava.AudioReceiver.BUFF_SIZE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -62,11 +65,20 @@ public class MainActivity extends AppCompatActivity {
     private int max_val = Short.MIN_VALUE;
     private long samplesCollected = 0;
 
+    private int referenceSum = 0;
+    private int referenceAvg = 0;
+    private Queue<Integer> amplitudeBatches = new ArrayDeque<>();
+    private int windowAvg = 0;
+    private int silenceCounter = 0;
+    private int loudnessCounter = 0;
+
 
     public final static int TIME_OTP_RESEND_WAIT = 120;
     public final static int MILLISECONDS_PER_SECOND = 1000;
     public final static int SECONDS_PER_MINUTE = 60;
     public static final int RECORD_TIME = 61;
+
+    public static final long SAMPLES_IN_SECOND = 44100;
 
     private CountDownTimer timer = new CountDownTimer(RECORD_TIME * MILLISECONDS_PER_SECOND, MILLISECONDS_PER_SECOND) {
         public void onTick(long millisUntilFinished) {
@@ -107,11 +119,7 @@ public class MainActivity extends AppCompatActivity {
         isMaxSet = true;
         stopListening();
         stopRecording();
-        try {
-            bufferedWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
     }
 
     private boolean checkPermissions() {
@@ -147,13 +155,96 @@ public class MainActivity extends AppCompatActivity {
         isListening = true;
     }
 
+    private void writeToFile(short[] amplitudes) {
+        for (short amplitude : amplitudes) {
+            try {
+                bufferedWriter.write(amplitude + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
         short[] amplitudes = ((short[]) msg.obj);
         Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
         binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
-//        if (!isRecording) {
+
+        if (samplesCollected <= SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Игнорируем первую секунду");
+            return true;
+        }
+
+        writeToFile(amplitudes);
+
+        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Записываем данные для сравнения");
+
+            for (short amplitude : amplitudes) {
+                referenceSum += Math.abs(amplitude);
+            }
+
+
+            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                Log.e(TAG, referenceSum / 441000 + "");
+                referenceAvg += referenceSum / (10 * SAMPLES_IN_SECOND);
+                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
+            }
+
+            return true;
+        }
+
+        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
+            try {
+                bufferedWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        int amplitudeBatchSum = 0;
+        for (short amplitude : amplitudes) {
+            amplitudeBatchSum += Math.abs(amplitude);
+        }
+
+        int amplitudeBatchAvg = amplitudeBatchSum / amplitudes.length;
+        windowAvg += amplitudeBatchAvg;
+        amplitudeBatches.add(amplitudeBatchAvg);
+
+        if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+            return true;
+        }
+
+        if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+            int avgToRemove = amplitudeBatches.poll();
+            windowAvg -= avgToRemove;
+        }
+
+        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
+
+        if (referenceAvg * 0.85 > windowAvg) {
+            silenceCounter++;
+            binding.tvSilenceCounter.setText("Подозрительная тишиина");
+            binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
+            return true;
+        }
+
+        if (referenceAvg * 1.15 < windowAvg) {
+            loudnessCounter++;
+            binding.tvStatus.setText("Шум");
+            binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+            return true;
+        }
+
+        if (referenceAvg * 0.85 < windowAvg && windowAvg < referenceAvg * 1.15) {
+            binding.tvStatus.setText("В пределах нормы");
+        }
+
+
+        //        if (!isRecording) {
 //            return true;
 //        }
 //        for (short amplitude : amplitudes) {

@@ -42,4 +42,28 @@
         android:gravity="center"
         android:layout_marginTop="27dp"/>
 
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="25sp"
+        android:gravity="center"
+        android:layout_marginTop="27dp"/>
+
+    <TextView
+        android:id="@+id/tv_loudness_counter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="25sp"
+        android:gravity="center"
+        android:layout_marginTop="27dp"/>
+
+    <TextView
+        android:id="@+id/tv_silence_counter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="25sp"
+        android:gravity="center"
+        android:layout_marginTop="27dp"/>
+
 </LinearLayout>
