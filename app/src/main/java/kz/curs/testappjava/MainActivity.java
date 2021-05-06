@@ -167,82 +167,7 @@ public class MainActivity extends AppCompatActivity {
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
         short[] amplitudes = ((short[]) msg.obj);
-        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
-        samplesCollected += amplitudes.length;
-        binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
-
-        if (samplesCollected <= SAMPLES_IN_SECOND) {
-            binding.tvStatus.setText("Игнорируем первую секунду");
-            return true;
-        }
-
-        writeToFile(amplitudes);
-
-        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
-            binding.tvStatus.setText("Записываем данные для сравнения");
-
-            for (short amplitude : amplitudes) {
-                referenceSum += Math.abs(amplitude);
-            }
-
-
-            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
-                Log.e(TAG, referenceSum / 441000 + "");
-                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
-                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
-            }
-
-            return true;
-        }
-
-        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
-            try {
-                bufferedWriter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-
-        int amplitudeBatchSum = 0;
-        for (short amplitude : amplitudes) {
-            amplitudeBatchSum += Math.abs(amplitude);
-        }
-
-        windowSum += amplitudeBatchSum;
-        amplitudeBatches.add(amplitudeBatchSum);
-
-        if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
-            return true;
-        }
-
-        if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
-            int sumToRemove = amplitudeBatches.poll();
-            windowSum -= sumToRemove;
-        }
-
-        int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
-
-        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
-
-        if (referenceAvg * 0.85 > windowAvg) {
-            silenceCounter++;
-            binding.tvSilenceCounter.setText("Подозрительная тишиина");
-            binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
-            return true;
-        }
-
-        if (referenceAvg * 1.15 < windowAvg) {
-            loudnessCounter++;
-            binding.tvStatus.setText("Шум");
-            binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-            return true;
-        }
-
-        if (referenceAvg * 0.85 < windowAvg && windowAvg < referenceAvg * 1.15) {
-            binding.tvStatus.setText("В пределах нормы");
-        }
-
+        processAmplitudes(amplitudes);
 
         //        if (!isRecording) {
 //            return true;
@@ -276,6 +201,84 @@ public class MainActivity extends AppCompatActivity {
         return true;
     });
     public static double REFERENCE = 0.00002;
+
+    private void processAmplitudes(short[] amplitudes) {
+        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
+        samplesCollected += amplitudes.length;
+        binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
+
+        if (samplesCollected <= SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Игнорируем первую секунду");
+            return;
+        }
+
+        writeToFile(amplitudes);
+
+        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Записываем данные для сравнения");
+
+            for (short amplitude : amplitudes) {
+                referenceSum += Math.abs(amplitude);
+            }
+
+
+            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                Log.e(TAG, referenceSum / 441000 + "");
+                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
+            }
+
+            return;
+        }
+
+        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
+            try {
+                bufferedWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        int amplitudeBatchSum = 0;
+        for (short amplitude : amplitudes) {
+            amplitudeBatchSum += Math.abs(amplitude);
+        }
+
+        windowSum += amplitudeBatchSum;
+        amplitudeBatches.add(amplitudeBatchSum);
+
+        if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+            return;
+        }
+
+        if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+            int sumToRemove = amplitudeBatches.poll();
+            windowSum -= sumToRemove;
+        }
+
+        int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
+
+        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
+
+        if (referenceAvg * 0.85 > windowAvg) {
+            silenceCounter++;
+            binding.tvSilenceCounter.setText("Подозрительная тишиина");
+            binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
+            return;
+        }
+
+        if (referenceAvg * 1.15 < windowAvg) {
+            loudnessCounter++;
+            binding.tvStatus.setText("Шум");
+            binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+            return;
+        }
+
+        if (referenceAvg * 0.85 < windowAvg && windowAvg < referenceAvg * 1.15) {
+            binding.tvStatus.setText("В пределах нормы");
+        }
+    }
 
     private double getAmplitude(short[] buffer) {
         int bufferSize = buffer.length;
