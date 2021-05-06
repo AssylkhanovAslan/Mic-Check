@@ -23,7 +23,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -65,10 +64,10 @@ public class MainActivity extends AppCompatActivity {
     private int max_val = Short.MIN_VALUE;
     private long samplesCollected = 0;
 
-    private int referenceSum = 0;
+    private long referenceSum = 0;
     private int referenceAvg = 0;
     private Queue<Integer> amplitudeBatches = new ArrayDeque<>();
-    private int windowAvg = 0;
+    private long windowSum = 0;
     private int silenceCounter = 0;
     private int loudnessCounter = 0;
 
@@ -189,7 +188,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
                 Log.e(TAG, referenceSum / 441000 + "");
-                referenceAvg += referenceSum / (10 * SAMPLES_IN_SECOND);
+                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
                 binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
             }
 
@@ -210,18 +209,19 @@ public class MainActivity extends AppCompatActivity {
             amplitudeBatchSum += Math.abs(amplitude);
         }
 
-        int amplitudeBatchAvg = amplitudeBatchSum / amplitudes.length;
-        windowAvg += amplitudeBatchAvg;
-        amplitudeBatches.add(amplitudeBatchAvg);
+        windowSum += amplitudeBatchSum;
+        amplitudeBatches.add(amplitudeBatchSum);
 
         if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
             return true;
         }
 
         if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
-            int avgToRemove = amplitudeBatches.poll();
-            windowAvg -= avgToRemove;
+            int sumToRemove = amplitudeBatches.poll();
+            windowSum -= sumToRemove;
         }
+
+        int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
 
         Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
 
