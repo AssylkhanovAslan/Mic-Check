@@ -188,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
 
         writeToFile(amplitudes);
 
+        //region First 10 seconds
         if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
             binding.tvStatus.setText("Записываем данные для сравнения");
 
@@ -235,6 +236,7 @@ public class MainActivity extends AppCompatActivity {
 
             return;
         }
+        //endregion
 
         if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
             try {
@@ -245,6 +247,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        filterAmplitudeExtremums(amplitudes);
         int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
             amplitudeBatchSum += Math.abs(amplitude);
@@ -459,7 +462,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //endregion
+    private void filterAmplitudeExtremums(short[] amplitudes) {
+        //Calculating the sum of abs. values
+        int amplitudesSum = 0;
+        for (short amplitude : amplitudes) {
+            amplitudesSum += Math.abs(amplitude);
+        }
+        //Calculating the average
+        int amplitudesAvg = (int) (amplitudesSum / (10 * BUFF_SIZE));
+
+        //Calculating the stdev
+        int sum = 0;
+        for (short amplitude : amplitudes) {
+            sum += Math.pow((Math.abs(amplitude) - amplitudesAvg), 2);
+        }
+        long stdev = (long) Math.sqrt(sum / (10 * BUFF_SIZE));
+
+        //Removing the extremums
+        int extremumsCounter = 0;
+        for (int i = 0; i < amplitudes.length; i++) {
+            short amplitude = amplitudes[i];
+            if (amplitude < amplitudesAvg - 3 * stdev) {
+                amplitudes[i] = (short) (amplitudesAvg - stdev);
+                extremumsCounter++;
+            }
+            if (amplitude > amplitudesAvg + 3 * stdev) {
+                amplitudes[i] = (short) (amplitudesAvg + stdev);
+                extremumsCounter++;
+            }
+        }
+    }
 
     //endregion
 }
