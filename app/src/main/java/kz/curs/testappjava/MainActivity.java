@@ -66,6 +66,9 @@ public class MainActivity extends AppCompatActivity {
 
     private long referenceSum = 0;
     private int referenceAvg = 0;
+    private long referenceStdev = 0;
+    private short referenceAmplitudes[] = new short[441000];
+    private int referenceOffsetIndicator = 0;
     private Queue<Integer> amplitudeBatches = new ArrayDeque<>();
     private long windowSum = 0;
     private int silenceCounter = 0;
@@ -219,12 +222,38 @@ public class MainActivity extends AppCompatActivity {
 
             for (short amplitude : amplitudes) {
                 referenceSum += Math.abs(amplitude);
+                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
+                referenceOffsetIndicator++;
             }
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
                 Log.e(TAG, referenceSum / 441000 + "");
+                //Calculating the average
                 referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+
+                //Calculating the stdev
+                int sum = 0;
+                for (short amplitude : referenceAmplitudes) {
+                    sum += Math.pow((amplitude - referenceAvg), 2);
+                }
+                referenceStdev = sum / (10 * SAMPLES_IN_SECOND);
+
+                //Removing the extremums
+                int extremumsCounter = 0;
+                for (int i = 0; i < referenceAmplitudes.length; i++) {
+                    short amplitude = referenceAmplitudes[i];
+                    if (amplitude < referenceAvg - referenceStdev) {
+                        referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
+                        extremumsCounter++;
+                    }
+                    if (amplitude > referenceAvg + referenceStdev) {
+                        referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
+                        extremumsCounter++;
+                    }
+                }
+
+                Log.e(TAG, "Extremums found = " + extremumsCounter);
                 binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
             }
 
