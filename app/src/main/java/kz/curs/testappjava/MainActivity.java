@@ -172,35 +172,6 @@ public class MainActivity extends AppCompatActivity {
         short[] amplitudes = ((short[]) msg.obj);
         processAmplitudes(amplitudes);
 
-        //        if (!isRecording) {
-//            return true;
-//        }
-//        for (short amplitude : amplitudes) {
-//            try {
-//                bufferedWriter.write(String.valueOf(amplitude) + "\n");
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            if (Math.abs(amplitude) > max_val) {
-//                if (isMaxSet) {
-//                    binding.textDecibels.setText("Вы шумите!");
-//                } else {
-//                    binding.textDecibels.setText(String.valueOf(max_val));
-//                    max_val = Math.abs(amplitude);
-//                    Log.e(TAG, String.valueOf(max_val));
-//                }
-//            }
-//
-//        }
-
-//        double db = getDecibels((int)getAmplitude((byte[])msg.obj));
-//        binding.textDecibels.setText(String.valueOf(db));
-//        if(db > referenceDb){
-//            if(isRecording)
-//                continueRecording();
-//            else
-//                startRecording();
-//        }
         return true;
     });
     public static double REFERENCE = 0.00002;
@@ -237,19 +208,21 @@ public class MainActivity extends AppCompatActivity {
                 //Calculating the stdev
                 int sum = 0;
                 for (short amplitude : referenceAmplitudes) {
-                    sum += Math.pow((amplitude - referenceAvg), 2);
+                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
                 }
-                referenceStdev = sum / (10 * SAMPLES_IN_SECOND);
+                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
+                Log.e(TAG, "Reference avg = " + referenceAvg);
+                Log.e(TAG, "Reference stdev = " + referenceStdev);
 
                 //Removing the extremums
                 int extremumsCounter = 0;
                 for (int i = 0; i < referenceAmplitudes.length; i++) {
                     short amplitude = referenceAmplitudes[i];
-                    if (amplitude < referenceAvg - referenceStdev) {
+                    if (amplitude < referenceAvg - 3 * referenceStdev) {
                         referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
                         extremumsCounter++;
                     }
-                    if (amplitude > referenceAvg + referenceStdev) {
+                    if (amplitude > referenceAvg + 3 * referenceStdev) {
                         referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
                         extremumsCounter++;
                     }
@@ -430,18 +403,6 @@ public class MainActivity extends AppCompatActivity {
         recorder.release();
         recorder = null;
         binding.imageRecord.setSelected(false);
-//
-//        File file = new File(getExternalCacheDir(), String.format("%s_%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size(), (long) duration))
-
-//        float duration = getAudioDuration(currentRecord.getPath());
-//        if (duration < 10) {
-//            if (referenceRecord == null)
-//                saveRecord(duration);
-//            else
-//                currentRecord.delete();
-//        } else {
-//            saveRecord(duration);
-//        }
         currentRecord = null;
         isRecording = false;
     }
