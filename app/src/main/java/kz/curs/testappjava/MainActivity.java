@@ -206,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
     public static double REFERENCE = 0.00002;
 
     private void processAmplitudes(short[] amplitudes) {
-        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
+//        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
         binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
@@ -228,6 +228,8 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                //Store the values before extremums filter
+                storeAmplitudeArray(referenceAmplitudes, "Before filter");
                 Log.e(TAG, referenceSum / 441000 + "");
                 //Calculating the average
                 referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
@@ -253,6 +255,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
+                storeAmplitudeArray(referenceAmplitudes, "After filter");
                 Log.e(TAG, "Extremums found = " + extremumsCounter);
                 binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
             }
@@ -288,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
         int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
 
-        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
+//        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
 
         if (referenceAvg * 0.85 > windowAvg) {
             silenceCounter++;
@@ -312,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
     private double getAmplitude(short[] buffer) {
         int bufferSize = buffer.length;
         double average = 0.0;
-        Log.e(TAG, "Amplitude size" + buffer.length);
+        //Log.e(TAG, "Amplitude size" + buffer.length);
         int max = Short.MIN_VALUE;
         for (short s : buffer) {
 
@@ -322,9 +325,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
-        Log.e(TAG, "Taken into account: " + bufferSize);
-
-        Log.e(TAG, "Max val: " + max);
+//        Log.e(TAG, "Taken into account: " + bufferSize);
+//
+//        Log.e(TAG, "Max val: " + max);
         //x=max;
         double x = average / bufferSize;
         double db = 0;
@@ -468,6 +471,31 @@ public class MainActivity extends AppCompatActivity {
 
     private File createRecordFile(float duration) {
         return new File(getExternalCacheDir(), String.format("%s_%s_%s.mp4", recordNameFormat.format(new Date()), recordFiles.size(), (long) duration));
+    }
+
+    private void storeAmplitudeArray(short[] amplitudes, String fileName) {
+        Log.e(TAG, "storeAmplitudeArray. Arr size = " + amplitudes.length);
+        File file = new File(getExternalCacheDir(), String.format("%s. %s.txt", fileName, recordNameFormat.format(new Date())));
+        try {
+            if (file.createNewFile()) {
+                Log.e(TAG, "storeAmplitudeArray. File created");
+
+                BufferedWriter amplitudesWriter = new BufferedWriter(new FileWriter(file));
+
+                for (short amplitude : amplitudes) {
+                    try {
+                        amplitudesWriter.write(amplitude + "\n");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                amplitudesWriter.close();
+            } else {
+                Log.e(TAG, "storeAmplitudeArray. File creation failed");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     //endregion
