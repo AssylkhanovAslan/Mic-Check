@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     public final static int MILLISECONDS_PER_SECOND = 1000;
     public final static int SECONDS_PER_MINUTE = 60;
     public static final int RECORD_TIME = 61;
+    private int THRESHOLD_COEFFICIENT = 3;
 
     public static final long SAMPLES_IN_SECOND = 44100;
 
@@ -215,6 +216,8 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "Reference avg = " + referenceAvg);
                 Log.e(TAG, "Reference stdev = " + referenceStdev);
 
+                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
+
                 //Removing the extremums
                 int extremumsCounter = 0;
                 for (int i = 0; i < referenceAmplitudes.length; i++) {
@@ -250,14 +253,14 @@ public class MainActivity extends AppCompatActivity {
         filterAmplitudeExtremums(amplitudes);
         int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
-            if (amplitude > referenceAvg + 6 * referenceStdev) {
+            if (amplitude > referenceAvg + 4 * referenceStdev) {
                 loudnessCounter++;
                 binding.tvStatus.setText("Шум");
                 binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-            } else if (amplitude < referenceAvg - 6 * referenceStdev) {
+            } else if (amplitude < referenceAvg - 4 * referenceStdev) {
                 silenceCounter++;
                 binding.tvSilenceCounter.setText("Подозрительная тишиина");
-                binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
+                binding.tvSilenceCounter.setText(String.format("Счетчик подозрительной тишины: %d", silenceCounter));
             } else {
                 binding.tvStatus.setText("В пределах нормы");
             }
