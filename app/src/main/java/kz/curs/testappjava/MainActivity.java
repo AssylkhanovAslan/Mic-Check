@@ -108,6 +108,13 @@ public class MainActivity extends AppCompatActivity {
                 if (!checkPermissions())
                     requestPermissions();
                 else {
+                    String coefficientText = binding.edtCoefficient.getText().toString();
+                    try {
+                        THRESHOLD_COEFFICIENT = Integer.parseInt(coefficientText);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    Log.e(TAG, "Coefficient = " + THRESHOLD_COEFFICIENT);
                     startListening();
                     createSignalFile();
                 }
@@ -253,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
         filterAmplitudeExtremums(amplitudes);
         int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
-            if (Math.abs(amplitude) > referenceAvg + 4 * referenceStdev) {
+            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
                 if (!isRecording) {
                     startRecording();
                 } else {
