@@ -250,42 +250,52 @@ public class MainActivity extends AppCompatActivity {
         filterAmplitudeExtremums(amplitudes);
         int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
-            amplitudeBatchSum += Math.abs(amplitude);
+            if (amplitude > referenceAvg + 6 * referenceStdev) {
+                loudnessCounter++;
+                binding.tvStatus.setText("Шум");
+                binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+            } else if (amplitude < referenceAvg - 6 * referenceStdev) {
+                silenceCounter++;
+                binding.tvSilenceCounter.setText("Подозрительная тишиина");
+                binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
+            } else {
+                binding.tvStatus.setText("В пределах нормы");
+            }
         }
 
-        windowSum += amplitudeBatchSum;
-        amplitudeBatches.add(amplitudeBatchSum);
-
-        if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
-            return;
-        }
-
-        if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
-            int sumToRemove = amplitudeBatches.poll();
-            windowSum -= sumToRemove;
-        }
-
-        int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
-
-//        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
-
-        if (referenceAvg * 0.85 > windowAvg) {
-            silenceCounter++;
-            binding.tvSilenceCounter.setText("Подозрительная тишиина");
-            binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
-            return;
-        }
-
-        if (referenceAvg * 1.15 < windowAvg) {
-            loudnessCounter++;
-            binding.tvStatus.setText("Шум");
-            binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-            return;
-        }
-
-        if (referenceAvg * 0.85 < windowAvg && windowAvg < referenceAvg * 1.15) {
-            binding.tvStatus.setText("В пределах нормы");
-        }
+//        windowSum += amplitudeBatchSum;
+//        amplitudeBatches.add(amplitudeBatchSum);
+//
+//        if (amplitudeBatches.size() < SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+//            return;
+//        }
+//
+//        if (amplitudeBatches.size() > SAMPLES_IN_SECOND * 10 / BUFF_SIZE) {
+//            int sumToRemove = amplitudeBatches.poll();
+//            windowSum -= sumToRemove;
+//        }
+//
+//        int windowAvg = (int) (windowSum / (10 * SAMPLES_IN_SECOND));
+//
+////        Log.e(TAG, String.format("Reference avg = %s, WindowAvg = %s", referenceAvg, windowAvg));
+//
+//        if (referenceAvg * 0.85 > windowAvg) {
+//            silenceCounter++;
+//            binding.tvSilenceCounter.setText("Подозрительная тишиина");
+//            binding.tvSilenceCounter.setText(String.format("Счетчик подозриетльной тишины: %d", silenceCounter));
+//            return;
+//        }
+//
+//        if (referenceAvg * 1.15 < windowAvg) {
+//            loudnessCounter++;
+//            binding.tvStatus.setText("Шум");
+//            binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+//            return;
+//        }
+//
+//        if (referenceAvg * 0.85 < windowAvg && windowAvg < referenceAvg * 1.15) {
+//            binding.tvStatus.setText("В пределах нормы");
+//        }
     }
 
     private double getAmplitude(short[] buffer) {
