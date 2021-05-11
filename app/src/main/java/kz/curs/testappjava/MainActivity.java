@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
+import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -107,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
                 if (!checkPermissions())
                     requestPermissions();
                 else {
-                    startRecording();
                     startListening();
                     createSignalFile();
                 }
@@ -253,14 +253,15 @@ public class MainActivity extends AppCompatActivity {
         filterAmplitudeExtremums(amplitudes);
         int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
-            if (amplitude > referenceAvg + 4 * referenceStdev) {
-                loudnessCounter++;
+            if (Math.abs(amplitude) > referenceAvg + 4 * referenceStdev) {
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    continueRecording();
+                }
+                //loudnessCounter++;
                 binding.tvStatus.setText("Шум");
-                binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-            } else if (amplitude < referenceAvg - 4 * referenceStdev) {
-                silenceCounter++;
-                binding.tvSilenceCounter.setText("Подозрительная тишиина");
-                binding.tvSilenceCounter.setText(String.format("Счетчик подозрительной тишины: %d", silenceCounter));
+                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
             } else {
                 binding.tvStatus.setText("В пределах нормы");
             }
@@ -354,7 +355,8 @@ public class MainActivity extends AppCompatActivity {
         recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        recorder.setOutputFile(createRecordFile());
+        String recordFilePath = createRecordFile();
+        recorder.setOutputFile(recordFilePath);
         recorder.setOnErrorListener((mr, what, extra) -> {
             Log.e("MediaRecorder", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
         });
@@ -371,7 +373,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String createRecordFile() {
-        audioFileName = String.format("Audio. %s.mp3", recordNameFormat.format(new Date()));
+        audioFileName = String.format("Audio. %s.mp4", recordNameFormat.format(new Date()));
         File file = new File(getExternalCacheDir(), audioFileName);
         try {
             Log.e(TAG, "Audio filed created = " + file.createNewFile());
@@ -400,9 +402,10 @@ public class MainActivity extends AppCompatActivity {
         return file.getPath();
     }
 
-    private final SimpleDateFormat recordNameFormat = new SimpleDateFormat("ddMMyyHHmm", Locale.getDefault());
+    private final SimpleDateFormat recordNameFormat = new SimpleDateFormat("ddMMyy_HHmmss", Locale.getDefault());
 
     private void continueRecording() {
+        Log.e(TAG, "Continue recording");
         recorderHandler.removeCallbacks(stopRunnable);
         recorderHandler.postDelayed(stopRunnable, RECORDING_TIME);
     }
@@ -412,8 +415,9 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable stopRunnable = this::stopRecording;
 
     private void stopRecording() {
-        if (recorder == null)
+        if (recorder == null) {
             return;
+        }
         recorderHandler.removeCallbacks(stopRunnable);
         recorder.stop();
         recorder.release();
