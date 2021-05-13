@@ -102,7 +102,10 @@ public class AudioReceiver implements Runnable {
     }
 
     public void stop(){
-        mIsRunning = false;
+        if (mIsRunning) {
+            mIsRunning = false;
+            recorder.stop();
+        }
     }
 
     private void sendMsg(short[] data){

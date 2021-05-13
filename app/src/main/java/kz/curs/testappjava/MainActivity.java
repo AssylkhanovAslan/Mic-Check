@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
     private void processAmplitudes(short[] amplitudes) {
 //        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
-        binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
+        //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
         if (samplesCollected <= SAMPLES_IN_SECOND) {
             binding.tvStatus.setText("Игнорируем первую секунду");
@@ -208,6 +208,7 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                referenceOffsetIndicator = 0;
                 //Store the values before extremums filter
                 storeAmplitudeArray(referenceAmplitudes, "Before filter");
                 Log.e(TAG, referenceSum / 441000 + "");
@@ -262,6 +263,7 @@ public class MainActivity extends AppCompatActivity {
         for (short amplitude : amplitudes) {
             if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
                 if (!isRecording) {
+                    //listener.stop();
                     startRecording();
                 } else {
                     continueRecording();
@@ -365,25 +367,29 @@ public class MainActivity extends AppCompatActivity {
         String recordFilePath = createRecordFile();
         recorder.setOutputFile(recordFilePath);
         recorder.setOnErrorListener((mr, what, extra) -> {
-            Log.e("MediaRecorder", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
+            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
+        });
+        recorder.setOnInfoListener((mediaRecorder, what, extra) -> {
+            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
         });
         try {
             recorder.prepare();
-            //Thread.sleep(1000);
             recorder.start();
-        } catch (IOException e) {
+            Log.e(TAG, "Started");
+            binding.imageRecord.setSelected(true);
+            isRecording = true;
+            continueRecording();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        binding.imageRecord.setSelected(true);
-        isRecording = true;
-        continueRecording();
+
     }
 
     private String createRecordFile() {
         audioFileName = String.format("Audio. %s.mp4", recordNameFormat.format(new Date()));
         File file = new File(getExternalCacheDir(), audioFileName);
         try {
-            Log.e(TAG, "Audio filed created = " + file.createNewFile());
+            Log.e(TAG, "Audio file created = " + file.createNewFile());
         } catch (IOException e) {
             e.printStackTrace();
         }
