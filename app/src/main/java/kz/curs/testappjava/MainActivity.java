@@ -30,7 +30,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
-import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -189,92 +188,96 @@ public class MainActivity extends AppCompatActivity {
         samplesCollected += amplitudes.length;
         //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
-        if (samplesCollected <= SAMPLES_IN_SECOND) {
-            binding.tvStatus.setText("Игнорируем первую секунду");
-            return;
-        }
-
-        writeToFile(amplitudes);
-
-        //region First 10 seconds
-        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
-            binding.tvStatus.setText("Записываем данные для сравнения");
-
-            for (short amplitude : amplitudes) {
-                referenceSum += Math.abs(amplitude);
-                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
-                referenceOffsetIndicator++;
-            }
 
 
-            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
-                referenceOffsetIndicator = 0;
-                //Store the values before extremums filter
-                storeAmplitudeArray(referenceAmplitudes, "Before filter");
-                Log.e(TAG, referenceSum / 441000 + "");
-                //Calculating the average
-                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
-
-                //Calculating the stdev
-                int sum = 0;
-                for (short amplitude : referenceAmplitudes) {
-                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
-                }
-                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
-                Log.e(TAG, "Reference avg = " + referenceAvg);
-                Log.e(TAG, "Reference stdev = " + referenceStdev);
-
-                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
-
-                //Removing the extremums
-                int extremumsCounter = 0;
-                for (int i = 0; i < referenceAmplitudes.length; i++) {
-                    short amplitude = referenceAmplitudes[i];
-                    if (amplitude < referenceAvg - 3 * referenceStdev) {
-                        referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
-                        extremumsCounter++;
-                    }
-                    if (amplitude > referenceAvg + 3 * referenceStdev) {
-                        referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
-                        extremumsCounter++;
-                    }
-                }
-
-                storeAmplitudeArray(referenceAmplitudes, "After filter");
-                Log.e(TAG, "Extremums found = " + extremumsCounter);
-                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
-            }
-
-            return;
-        }
+        //region TODO: recover this after short to audio file test
+        //        if (samplesCollected <= SAMPLES_IN_SECOND) {
+//            binding.tvStatus.setText("Игнорируем первую секунду");
+//            return;
+//        }
+//
+//        writeToFile(amplitudes);
+//
+//        //region First 10 seconds
+//        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
+//            binding.tvStatus.setText("Записываем данные для сравнения");
+//
+//            for (short amplitude : amplitudes) {
+//                referenceSum += Math.abs(amplitude);
+//                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
+//                referenceOffsetIndicator++;
+//            }
+//
+//
+//            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+//                referenceOffsetIndicator = 0;
+//                //Store the values before extremums filter
+//                storeAmplitudeArray(referenceAmplitudes, "Before filter");
+//                Log.e(TAG, referenceSum / 441000 + "");
+//                //Calculating the average
+//                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+//
+//                //Calculating the stdev
+//                int sum = 0;
+//                for (short amplitude : referenceAmplitudes) {
+//                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
+//                }
+//                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
+//                Log.e(TAG, "Reference avg = " + referenceAvg);
+//                Log.e(TAG, "Reference stdev = " + referenceStdev);
+//
+//                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
+//
+//                //Removing the extremums
+//                int extremumsCounter = 0;
+//                for (int i = 0; i < referenceAmplitudes.length; i++) {
+//                    short amplitude = referenceAmplitudes[i];
+//                    if (amplitude < referenceAvg - 3 * referenceStdev) {
+//                        referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
+//                        extremumsCounter++;
+//                    }
+//                    if (amplitude > referenceAvg + 3 * referenceStdev) {
+//                        referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
+//                        extremumsCounter++;
+//                    }
+//                }
+//
+//                storeAmplitudeArray(referenceAmplitudes, "After filter");
+//                Log.e(TAG, "Extremums found = " + extremumsCounter);
+//                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
+//            }
+//
+//            return;
+//        }
+//        //endregion
+//
+//        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
+//            try {
+//                bufferedWriter.close();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//
+//        filterAmplitudeExtremums(amplitudes);
+//        int amplitudeBatchSum = 0;
+//        for (short amplitude : amplitudes) {
+//            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
+//                if (!isRecording) {
+//                    //listener.stop();
+//                    startRecording();
+//                } else {
+//                    continueRecording();
+//                }
+//                //loudnessCounter++;
+//                binding.tvStatus.setText("Шум");
+//                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+//            } else {
+//                binding.tvStatus.setText("В пределах нормы");
+//            }
+//        }
         //endregion
-
-        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
-            try {
-                bufferedWriter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-
-        filterAmplitudeExtremums(amplitudes);
-        int amplitudeBatchSum = 0;
-        for (short amplitude : amplitudes) {
-            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
-                if (!isRecording) {
-                    //listener.stop();
-                    startRecording();
-                } else {
-                    continueRecording();
-                }
-                //loudnessCounter++;
-                binding.tvStatus.setText("Шум");
-                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-            } else {
-                binding.tvStatus.setText("В пределах нормы");
-            }
-        }
 
 //        windowSum += amplitudeBatchSum;
 //        amplitudeBatches.add(amplitudeBatchSum);
@@ -524,4 +527,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //endregion
+
+    //convert short to byte
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
+
+    }
 }
