@@ -190,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
     public static double REFERENCE = 0.00002;
 
     private void processAmplitudes(short[] amplitudes) {
-        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
+        //Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
         //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
@@ -410,7 +410,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private File createRecordWaveFile() {
-        audioFileName = String.format("Audio. %s.wav", recordNameFormat.format(new Date()));
+        audioFileName = String.format("Audio. %s.pcm", recordNameFormat.format(new Date()));
         File file = new File(getExternalCacheDir(), audioFileName);
         try {
             Log.e(TAG, "Audio file created = " + file.createNewFile());
@@ -573,7 +573,7 @@ public class MainActivity extends AppCompatActivity {
 
         //TODO: store list to new variable and merge the data
         List<short[]> toStoreList = audioToStore;
-        audioToStore = null;
+        audioToStore = new ArrayList<>();
 
 
         short[] mergedData = new short[0];
@@ -613,54 +613,56 @@ public class MainActivity extends AppCompatActivity {
                 // WAVE header
                 // see http://ccrma.stanford.edu/courses/422/projects/WaveFormat/
 
-                byte[] header = new byte[44];
+                //region Wave Headers
+//                byte[] header = new byte[44];
+//
+//                header[0] = 'R';  // RIFF/WAVE header
+//                header[1] = 'I';
+//                header[2] = 'F';
+//                header[3] = 'F';
+//                header[4] = (byte) (myChunkSize & 0xff);
+//                header[5] = (byte) ((myChunkSize >> 8) & 0xff);
+//                header[6] = (byte) ((myChunkSize >> 16) & 0xff);
+//                header[7] = (byte) ((myChunkSize >> 24) & 0xff);
+//                header[8] = 'W';
+//                header[9] = 'A';
+//                header[10] = 'V';
+//                header[11] = 'E';
+//                header[12] = 'f';  // 'fmt ' chunk
+//                header[13] = 'm';
+//                header[14] = 't';
+//                header[15] = ' ';
+//                header[16] = 16;  // 4 bytes: size of 'fmt ' chunk
+//                header[17] = 0;
+//                header[18] = 0;
+//                header[19] = 0;
+//                header[20] = 1;  // format = 1
+//                header[21] = 0;
+//                header[22] = (byte) 1;
+//                header[23] = 0;
+//                header[24] = (byte) (mySampleRate & 0xff);
+//                header[25] = (byte) ((mySampleRate >> 8) & 0xff);
+//                header[26] = (byte) ((mySampleRate >> 16) & 0xff);
+//                header[27] = (byte) ((mySampleRate >> 24) & 0xff);
+//                header[28] = (byte) (myByteRate & 0xff);
+//                header[29] = (byte) ((myByteRate >> 8) & 0xff);
+//                header[30] = (byte) ((myByteRate >> 16) & 0xff);
+//                header[31] = (byte) ((myByteRate >> 24) & 0xff);
+//                header[32] = (byte) (myBlockAlign);  // block align
+//                header[33] = 0;
+//                header[34] = 16;  // bits per sample
+//                header[35] = 0;
+//                header[36] = 'd';
+//                header[37] = 'a';
+//                header[38] = 't';
+//                header[39] = 'a';
+//                header[40] = (byte) (myDataSize & 0xff);
+//                header[41] = (byte) ((myDataSize >> 8) & 0xff);
+//                header[42] = (byte) ((myDataSize >> 16) & 0xff);
+//                header[43] = (byte) ((myDataSize >> 24) & 0xff);
 
-                header[0] = 'R';  // RIFF/WAVE header
-                header[1] = 'I';
-                header[2] = 'F';
-                header[3] = 'F';
-                header[4] = (byte) (myChunkSize & 0xff);
-                header[5] = (byte) ((myChunkSize >> 8) & 0xff);
-                header[6] = (byte) ((myChunkSize >> 16) & 0xff);
-                header[7] = (byte) ((myChunkSize >> 24) & 0xff);
-                header[8] = 'W';
-                header[9] = 'A';
-                header[10] = 'V';
-                header[11] = 'E';
-                header[12] = 'f';  // 'fmt ' chunk
-                header[13] = 'm';
-                header[14] = 't';
-                header[15] = ' ';
-                header[16] = 16;  // 4 bytes: size of 'fmt ' chunk
-                header[17] = 0;
-                header[18] = 0;
-                header[19] = 0;
-                header[20] = 1;  // format = 1
-                header[21] = 0;
-                header[22] = (byte) 1;
-                header[23] = 0;
-                header[24] = (byte) (mySampleRate & 0xff);
-                header[25] = (byte) ((mySampleRate >> 8) & 0xff);
-                header[26] = (byte) ((mySampleRate >> 16) & 0xff);
-                header[27] = (byte) ((mySampleRate >> 24) & 0xff);
-                header[28] = (byte) (myByteRate & 0xff);
-                header[29] = (byte) ((myByteRate >> 8) & 0xff);
-                header[30] = (byte) ((myByteRate >> 16) & 0xff);
-                header[31] = (byte) ((myByteRate >> 24) & 0xff);
-                header[32] = (byte) (myBlockAlign);  // block align
-                header[33] = 0;
-                header[34] = 16;  // bits per sample
-                header[35] = 0;
-                header[36] = 'd';
-                header[37] = 'a';
-                header[38] = 't';
-                header[39] = 'a';
-                header[40] = (byte) (myDataSize & 0xff);
-                header[41] = (byte) ((myDataSize >> 8) & 0xff);
-                header[42] = (byte) ((myDataSize >> 16) & 0xff);
-                header[43] = (byte) ((myDataSize >> 24) & 0xff);
-
-                output.write(header, 0, 44);
+//                output.write(header, 0, 44);
+                //endregion
             }
 
 
