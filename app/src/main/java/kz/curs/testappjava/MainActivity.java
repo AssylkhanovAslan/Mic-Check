@@ -19,8 +19,12 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -82,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
     private int THRESHOLD_COEFFICIENT = 3;
 
     public static final long SAMPLES_IN_SECOND = 44100;
+    private ArrayList<short[]> audioToStore = new ArrayList<>();
+    private DataOutputStream output = null;
 
     private CountDownTimer timer = new CountDownTimer(RECORD_TIME * MILLISECONDS_PER_SECOND, MILLISECONDS_PER_SECOND) {
         public void onTick(long millisUntilFinished) {
@@ -184,100 +190,102 @@ public class MainActivity extends AppCompatActivity {
     public static double REFERENCE = 0.00002;
 
     private void processAmplitudes(short[] amplitudes) {
-//        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
+        Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
         //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
 
+        if (samplesCollected <= SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Игнорируем первую секунду");
+            return;
+        }
 
-        //region TODO: recover this after short to audio file test
-        //        if (samplesCollected <= SAMPLES_IN_SECOND) {
-//            binding.tvStatus.setText("Игнорируем первую секунду");
-//            return;
-//        }
-//
-//        writeToFile(amplitudes);
-//
-//        //region First 10 seconds
-//        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
-//            binding.tvStatus.setText("Записываем данные для сравнения");
-//
-//            for (short amplitude : amplitudes) {
-//                referenceSum += Math.abs(amplitude);
-//                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
-//                referenceOffsetIndicator++;
-//            }
-//
-//
-//            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
-//                referenceOffsetIndicator = 0;
-//                //Store the values before extremums filter
-//                storeAmplitudeArray(referenceAmplitudes, "Before filter");
-//                Log.e(TAG, referenceSum / 441000 + "");
-//                //Calculating the average
-//                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
-//
-//                //Calculating the stdev
-//                int sum = 0;
-//                for (short amplitude : referenceAmplitudes) {
-//                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
-//                }
-//                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
-//                Log.e(TAG, "Reference avg = " + referenceAvg);
-//                Log.e(TAG, "Reference stdev = " + referenceStdev);
-//
-//                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
-//
-//                //Removing the extremums
-//                int extremumsCounter = 0;
-//                for (int i = 0; i < referenceAmplitudes.length; i++) {
-//                    short amplitude = referenceAmplitudes[i];
-//                    if (amplitude < referenceAvg - 3 * referenceStdev) {
-//                        referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
-//                        extremumsCounter++;
-//                    }
-//                    if (amplitude > referenceAvg + 3 * referenceStdev) {
-//                        referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
-//                        extremumsCounter++;
-//                    }
-//                }
-//
-//                storeAmplitudeArray(referenceAmplitudes, "After filter");
-//                Log.e(TAG, "Extremums found = " + extremumsCounter);
-//                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
-//            }
-//
-//            return;
-//        }
-//        //endregion
-//
-//        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
-//            try {
-//                bufferedWriter.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//
-//        filterAmplitudeExtremums(amplitudes);
-//        int amplitudeBatchSum = 0;
-//        for (short amplitude : amplitudes) {
-//            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
-//                if (!isRecording) {
-//                    //listener.stop();
-//                    startRecording();
-//                } else {
-//                    continueRecording();
-//                }
-//                //loudnessCounter++;
-//                binding.tvStatus.setText("Шум");
-//                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-//            } else {
-//                binding.tvStatus.setText("В пределах нормы");
-//            }
-//        }
+        writeToFile(amplitudes);
+
+        //region First 10 seconds
+        if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
+            binding.tvStatus.setText("Записываем данные для сравнения");
+
+            for (short amplitude : amplitudes) {
+                referenceSum += Math.abs(amplitude);
+                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
+                referenceOffsetIndicator++;
+            }
+
+
+            if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                referenceOffsetIndicator = 0;
+                //Store the values before extremums filter
+                storeAmplitudeArray(referenceAmplitudes, "Before filter");
+                Log.e(TAG, referenceSum / 441000 + "");
+                //Calculating the average
+                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+
+                //Calculating the stdev
+                int sum = 0;
+                for (short amplitude : referenceAmplitudes) {
+                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
+                }
+                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
+                Log.e(TAG, "Reference avg = " + referenceAvg);
+                Log.e(TAG, "Reference stdev = " + referenceStdev);
+
+                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
+
+                //Removing the extremums
+                int extremumsCounter = 0;
+                for (int i = 0; i < referenceAmplitudes.length; i++) {
+                    short amplitude = referenceAmplitudes[i];
+                    if (amplitude < referenceAvg - 3 * referenceStdev) {
+                        referenceAmplitudes[i] = (short) (referenceAvg - referenceStdev);
+                        extremumsCounter++;
+                    }
+                    if (amplitude > referenceAvg + 3 * referenceStdev) {
+                        referenceAmplitudes[i] = (short) (referenceAvg + referenceStdev);
+                        extremumsCounter++;
+                    }
+                }
+
+                storeAmplitudeArray(referenceAmplitudes, "After filter");
+                Log.e(TAG, "Extremums found = " + extremumsCounter);
+                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
+            }
+
+            return;
+        }
         //endregion
+
+        if (samplesCollected == 61 * SAMPLES_IN_SECOND) {
+            try {
+                bufferedWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        if (isRecording) {
+            audioToStore.add(amplitudes);
+        }
+
+        filterAmplitudeExtremums(amplitudes);
+        int amplitudeBatchSum = 0;
+        for (short amplitude : amplitudes) {
+            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
+                if (!isRecording) {
+                    audioToStore = new ArrayList<>();
+                    audioToStore.add(amplitudes);
+                    startRecording();
+                } else {
+                    continueRecording();
+                }
+                //loudnessCounter++;
+                binding.tvStatus.setText("Шум");
+                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+            } else {
+                binding.tvStatus.setText("В пределах нормы");
+            }
+        }
 
 //        windowSum += amplitudeBatchSum;
 //        amplitudeBatches.add(amplitudeBatchSum);
@@ -361,30 +369,31 @@ public class MainActivity extends AppCompatActivity {
     //region Recorder
 
     private void startRecording() {
-        if (recorder != null)
-            stopRecording();
-        recorder = new MediaRecorder();
-        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        String recordFilePath = createRecordFile();
-        recorder.setOutputFile(recordFilePath);
-        recorder.setOnErrorListener((mr, what, extra) -> {
-            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
-        });
-        recorder.setOnInfoListener((mediaRecorder, what, extra) -> {
-            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
-        });
-        try {
-            recorder.prepare();
-            recorder.start();
-            Log.e(TAG, "Started");
-            binding.imageRecord.setSelected(true);
-            isRecording = true;
-            continueRecording();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+//        if (recorder != null)
+//            stopRecording();
+//        recorder = new MediaRecorder();
+//        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
+//        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+//        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+//        String recordFilePath = createRecordFile();
+//        recorder.setOutputFile(recordFilePath);
+//        recorder.setOnErrorListener((mr, what, extra) -> {
+//            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
+//        });
+//        recorder.setOnInfoListener((mediaRecorder, what, extra) -> {
+//            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
+//        });
+//        try {
+//            recorder.prepare();
+//            recorder.start();
+//            Log.e(TAG, "Started");
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+        binding.imageRecord.setSelected(true);
+        isRecording = true;
+        continueRecording();
 
     }
 
@@ -398,6 +407,18 @@ public class MainActivity extends AppCompatActivity {
         }
         currentRecord = file;
         return file.getPath();
+    }
+
+    private File createRecordWaveFile() {
+        audioFileName = String.format("Audio. %s.wav", recordNameFormat.format(new Date()));
+        File file = new File(getExternalCacheDir(), audioFileName);
+        try {
+            Log.e(TAG, "Audio file created = " + file.createNewFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        currentRecord = file;
+        return file;
     }
 
     private String createSignalFile() {
@@ -431,13 +452,15 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable stopRunnable = this::stopRecording;
 
     private void stopRecording() {
-        if (recorder == null) {
-            return;
-        }
-        recorderHandler.removeCallbacks(stopRunnable);
-        recorder.stop();
-        recorder.release();
-        recorder = null;
+//        if (recorder == null) {
+//            return;
+//        }
+//        recorderHandler.removeCallbacks(stopRunnable);
+//        recorder.stop();
+//        recorder.release();
+//        recorder = null;
+
+        storeRecordedData();
         binding.imageRecord.setSelected(false);
         currentRecord = null;
         isRecording = false;
@@ -539,5 +562,146 @@ public class MainActivity extends AppCompatActivity {
         }
         return bytes;
 
+    }
+
+    private void storeRecordedData() {
+//        //TODO: create WaveFile
+//        File wavFile = createRecordWaveFile();
+//        if (wavFile == null || !wavFile.exists()) {
+//            return;
+//        }
+
+        //TODO: store list to new variable and merge the data
+        List<short[]> toStoreList = audioToStore;
+        audioToStore = null;
+
+
+        short[] mergedData = new short[0];
+        for (short[] data : toStoreList) {
+            mergedData = ArrayUtils.addAll(mergedData, data);
+        }
+
+        shortToWave(mergedData);
+        //TODO: Write everything to a file
+    }
+
+    private void shortToWave(short[] audioData) {
+
+        try {
+            if (output == null) {
+
+                int mySubChunk1Size = 16;
+                int myBitsPerSample= 16;
+                int myFormat = 1;
+                long myChannels = 1;
+                long mySampleRate = 44100;
+                long myByteRate = mySampleRate * myChannels * myBitsPerSample/8;
+                int myBlockAlign = (int) (myChannels * myBitsPerSample/8);
+
+
+                long myDataSize = audioData.length * 2;
+                long myChunk2Size =  myDataSize * myChannels * myBitsPerSample/8;
+                long myChunkSize = 36 + myChunk2Size;
+
+
+                File outputFile = createRecordWaveFile();
+                if (outputFile == null) {
+                    Log.e(TAG, "Wave file turned out to be null. Reverting back");
+                    return;
+                }
+                output = new DataOutputStream(new FileOutputStream(outputFile));
+                // WAVE header
+                // see http://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+
+                byte[] header = new byte[44];
+
+                header[0] = 'R';  // RIFF/WAVE header
+                header[1] = 'I';
+                header[2] = 'F';
+                header[3] = 'F';
+                header[4] = (byte) (myChunkSize & 0xff);
+                header[5] = (byte) ((myChunkSize >> 8) & 0xff);
+                header[6] = (byte) ((myChunkSize >> 16) & 0xff);
+                header[7] = (byte) ((myChunkSize >> 24) & 0xff);
+                header[8] = 'W';
+                header[9] = 'A';
+                header[10] = 'V';
+                header[11] = 'E';
+                header[12] = 'f';  // 'fmt ' chunk
+                header[13] = 'm';
+                header[14] = 't';
+                header[15] = ' ';
+                header[16] = 16;  // 4 bytes: size of 'fmt ' chunk
+                header[17] = 0;
+                header[18] = 0;
+                header[19] = 0;
+                header[20] = 1;  // format = 1
+                header[21] = 0;
+                header[22] = (byte) 1;
+                header[23] = 0;
+                header[24] = (byte) (mySampleRate & 0xff);
+                header[25] = (byte) ((mySampleRate >> 8) & 0xff);
+                header[26] = (byte) ((mySampleRate >> 16) & 0xff);
+                header[27] = (byte) ((mySampleRate >> 24) & 0xff);
+                header[28] = (byte) (myByteRate & 0xff);
+                header[29] = (byte) ((myByteRate >> 8) & 0xff);
+                header[30] = (byte) ((myByteRate >> 16) & 0xff);
+                header[31] = (byte) ((myByteRate >> 24) & 0xff);
+                header[32] = (byte) (myBlockAlign);  // block align
+                header[33] = 0;
+                header[34] = 16;  // bits per sample
+                header[35] = 0;
+                header[36] = 'd';
+                header[37] = 'a';
+                header[38] = 't';
+                header[39] = 'a';
+                header[40] = (byte) (myDataSize & 0xff);
+                header[41] = (byte) ((myDataSize >> 8) & 0xff);
+                header[42] = (byte) ((myDataSize >> 16) & 0xff);
+                header[43] = (byte) ((myDataSize >> 24) & 0xff);
+
+                output.write(header, 0, 44);
+            }
+
+
+
+
+            for (short s : audioData) {
+                writeShortLE(output, s);
+            }
+            output.flush();
+            if (output != null) {
+                output.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeInt(final DataOutputStream output, final int value) throws IOException {
+        output.write(value >> 0);
+        output.write(value >> 8);
+        output.write(value >> 16);
+        output.write(value >> 24);
+    }
+
+    private void writeShort(final DataOutputStream output, final short value) throws IOException {
+        output.write(value >> 0);
+        output.write(value >> 8);
+    }
+
+    private void writeString(final DataOutputStream output, final String value) throws IOException {
+        for (int i = 0; i < value.length(); i++) {
+            output.write(value.charAt(i));
+        }
+    }
+
+    public static void writeShortLE(DataOutputStream out, short value) {
+        try {
+            out.writeByte(value & 0xFF);
+            out.writeByte((value >> 8) & 0xFF);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
