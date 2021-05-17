@@ -19,6 +19,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import java.io.BufferedWriter;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -84,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
     private int THRESHOLD_COEFFICIENT = 3;
 
     public static final long SAMPLES_IN_SECOND = 44100;
-    private ArrayList<byte[]> audioToStore = new ArrayList<>();
+    private ArrayList<short[]> audioToStore = new ArrayList<>();
     private DataOutputStream output = null;
 
     private CountDownTimer timer = new CountDownTimer(RECORD_TIME * MILLISECONDS_PER_SECOND, MILLISECONDS_PER_SECOND) {
@@ -197,7 +199,8 @@ public class MainActivity extends AppCompatActivity {
         Log.e(TAG, "Amplitudes len = " + amplitudes.length);
 
         if (isRecording) {
-            shortToWave(amplitudes);
+            Log.e(TAG, "Adding. Len = " + amplitudes.length);
+            audioToStore.add(amplitudes);
         }
 
 //        if (samplesCollected <= SAMPLES_IN_SECOND) {
@@ -465,7 +468,7 @@ public class MainActivity extends AppCompatActivity {
 //        recorder.release();
 //        recorder = null;
 
-        //storeRecordedData();
+        storeRecordedData();
         recorderHandler.removeCallbacks(stopRunnable);
         binding.imageRecord.setSelected(false);
         currentRecord = null;
@@ -578,16 +581,16 @@ public class MainActivity extends AppCompatActivity {
 //        }
 
         //TODO: store list to new variable and merge the data
-//        List<short[]> toStoreList = audioToStore;
-//        audioToStore = new ArrayList<>();
+        List<short[]> toStoreList = audioToStore;
+        audioToStore = new ArrayList<>();
 
 
-//        short[] mergedData = new short[0];
-//        for (short[] data : toStoreList) {
-//            mergedData = ArrayUtils.addAll(mergedData, data);
-//        }
-//
-//        shortToWave(mergedData);
+        short[] mergedData = new short[0];
+        for (short[] data : toStoreList) {
+            mergedData = ArrayUtils.addAll(mergedData, data);
+        }
+
+        shortToWave(mergedData);
         //TODO: Write everything to a file
     }
 
