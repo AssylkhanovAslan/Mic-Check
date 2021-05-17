@@ -13,7 +13,7 @@ import java.util.List;
 public class AudioReceiver implements Runnable {
 
     private static final String TAG = AudioReceiver.class.getSimpleName();
-    public static final int BUFF_SIZE = 3675;
+    public static final int BUFF_SIZE = 220500;
 
     private final AudioFormatInfo formatInfo;
 

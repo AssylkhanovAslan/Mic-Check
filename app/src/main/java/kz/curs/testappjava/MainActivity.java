@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private static final int RECORDING_TIME = 5000;
+    private static final int RECORDING_TIME = 6000;
     private static final int SCANNING_INTERVAL = 500;
     private final int PERMISSIONS_REQUEST_CODE = 1488;
 
@@ -194,14 +194,10 @@ public class MainActivity extends AppCompatActivity {
         samplesCollected += amplitudes.length;
         //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
+        Log.e(TAG, "Amplitudes len = " + amplitudes.length);
+
         if (isRecording) {
-            try {
-                for (short amplitude : amplitudes) {
-                    writeShort(output, amplitude);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            shortToWave(amplitudes);
         }
 
 //        if (samplesCollected <= SAMPLES_IN_SECOND) {
@@ -400,15 +396,6 @@ public class MainActivity extends AppCompatActivity {
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
-        File file = createRecordWaveFile();
-        if (file == null) {
-            return;
-        }
-        try {
-            output = new DataOutputStream(new FileOutputStream(file));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         binding.imageRecord.setSelected(true);
         isRecording = true;
         continueRecording();
@@ -483,11 +470,6 @@ public class MainActivity extends AppCompatActivity {
         binding.imageRecord.setSelected(false);
         currentRecord = null;
         isRecording = false;
-        try {
-            output.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private float getAudioDuration(String url) {
@@ -610,6 +592,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void shortToWave(short[] audioData) {
+        Log.e(TAG, "Len = " + audioData.length);
+        //TODO: move to prev. method later
+        File wavFile = createRecordWaveFile();
+        if (wavFile == null || !wavFile.exists()) {
+            Log.e(TAG, "Could not create a file");
+            return;
+        }
+        try {
+            output = new DataOutputStream(new FileOutputStream(wavFile));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         try {
             if (output == null) {
@@ -627,13 +621,6 @@ public class MainActivity extends AppCompatActivity {
                 long myChunk2Size =  myDataSize * myChannels * myBitsPerSample/8;
                 long myChunkSize = 36 + myChunk2Size;
 
-
-                File outputFile = createRecordWaveFile();
-                if (outputFile == null) {
-                    Log.e(TAG, "Wave file turned out to be null. Reverting back");
-                    return;
-                }
-                output = new DataOutputStream(new FileOutputStream(outputFile));
                 // WAVE header
                 // see http://ccrma.stanford.edu/courses/422/projects/WaveFormat/
 
@@ -684,13 +671,10 @@ public class MainActivity extends AppCompatActivity {
 //                header[41] = (byte) ((myDataSize >> 8) & 0xff);
 //                header[42] = (byte) ((myDataSize >> 16) & 0xff);
 //                header[43] = (byte) ((myDataSize >> 24) & 0xff);
-
+//
 //                output.write(header, 0, 44);
                 //endregion
             }
-
-
-
 
             for (short s : audioData) {
                 writeShort(output, s);
