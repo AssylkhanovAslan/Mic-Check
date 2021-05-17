@@ -257,7 +257,6 @@ public class MainActivity extends AppCompatActivity {
                 storeAmplitudeArray(referenceAmplitudes, "After filter");
                 Log.e(TAG, "Extremums found = " + extremumsCounter);
                 binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
-                startRecording();
             }
 
             return;
@@ -277,23 +276,23 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //TODO: Recover it later and move to method
-//        //filterAmplitudeExtremums(amplitudes);
-//        int amplitudeBatchSum = 0;
-//        for (short amplitude : amplitudes) {
-//            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
-//                if (!isRecording) {
-//                    audioToStore.add(amplitudes);
-//                    startRecording();
-//                } else {
-//                    continueRecording();
-//                }
-//                //loudnessCounter++;
-//                binding.tvStatus.setText("Шум");
-//                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
-//            } else {
-//                binding.tvStatus.setText("В пределах нормы");
-//            }
-//        }
+        filterAmplitudeExtremums(amplitudes);
+        int amplitudeBatchSum = 0;
+        for (short amplitude : amplitudes) {
+            if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
+                if (!isRecording) {
+                    audioToStore.add(Arrays.copyOf(amplitudes, amplitudes.length));
+                    startRecording();
+                } else {
+                    continueRecording();
+                }
+                //loudnessCounter++;
+                binding.tvStatus.setText("Шум");
+                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
+            } else {
+                binding.tvStatus.setText("В пределах нормы");
+            }
+        }
 
 //        windowSum += amplitudeBatchSum;
 //        amplitudeBatches.add(amplitudeBatchSum);
