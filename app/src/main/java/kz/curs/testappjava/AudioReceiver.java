@@ -17,7 +17,7 @@ public class AudioReceiver implements Runnable {
 
     private final AudioFormatInfo formatInfo;
 
-    public AudioReceiver(AudioFormatInfo format){
+    public AudioReceiver(AudioFormatInfo format) {
         formatInfo = format;
     }
 
@@ -36,7 +36,7 @@ public class AudioReceiver implements Runnable {
         int buffSize = AudioRecord.getMinBufferSize(formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat());
         Log.e(TAG, "Buff size" + buffSize);
 
-        if(buffSize == AudioRecord.ERROR){
+        if (buffSize == AudioRecord.ERROR) {
             System.err.println("getMinBufferSize returned ERROR");
             return;
         }
@@ -55,21 +55,21 @@ public class AudioReceiver implements Runnable {
 
         recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, formatInfo.getSampleRateInHz(), formatInfo.getChannelConfig(), formatInfo.getAudioFormat(), buffSize * 10);
 
-        if(recorder.getState() != AudioRecord.STATE_INITIALIZED){
+        if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
             System.err.println("getState() != STATE_INITIALIZED");
             return;
         }
 
-        try{
+        try {
             recorder.startRecording();
-        } catch (IllegalStateException e){
+        } catch (IllegalStateException e) {
             e.printStackTrace();
             return;
         }
 
         int count = 0;
 
-        while(mIsRunning){
+        while (mIsRunning) {
             int samplesRead = recorder.read(buffers[count], 0, buffers[count].length);
             if (samplesRead == AudioRecord.ERROR_INVALID_OPERATION) {
                 System.err.println("read() returned ERROR_INVALID_OPERATION");
@@ -97,19 +97,19 @@ public class AudioReceiver implements Runnable {
         }
     }
 
-    public void addHandler(Handler handler){
+    public void addHandler(Handler handler) {
         handlers.add(handler);
     }
 
-    public void stop(){
+    public void stop() {
         if (mIsRunning) {
             mIsRunning = false;
             recorder.stop();
         }
     }
 
-    private void sendMsg(short[] data){
-        for(Handler handler : handlers){
+    private void sendMsg(short[] data) {
+        for (Handler handler : handlers) {
             handler.sendMessage(handler.obtainMessage(MSG_DATA, data));
         }
     }
