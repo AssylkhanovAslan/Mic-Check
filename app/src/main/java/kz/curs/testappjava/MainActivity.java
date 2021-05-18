@@ -41,6 +41,8 @@ import java.util.concurrent.Executors;
 
 import kz.curs.testappjava.databinding.ActivityMainBinding;
 
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
 import static kz.curs.testappjava.AudioReceiver.BUFF_SIZE;
 
 public class MainActivity extends AppCompatActivity {
@@ -80,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
     private int silenceCounter = 0;
     private int loudnessCounter = 0;
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
+    private boolean examFinished = true;
 
 
     public final static int TIME_OTP_RESEND_WAIT = 120;
@@ -117,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!checkPermissions())
                     requestPermissions();
                 else {
+                    examFinished = false;
                     String coefficientText = binding.edtCoefficient.getText().toString();
                     try {
                         THRESHOLD_COEFFICIENT = Integer.parseInt(coefficientText);
@@ -138,7 +142,15 @@ public class MainActivity extends AppCompatActivity {
     private void stop() {
         isMaxSet = true;
         stopListening();
+        examFinished = true;
+        checkIfAllRecordsStored();
+    }
 
+    private void checkIfAllRecordsStored() {
+        if (examFinished) {
+            int visibility = silenceCounter == loudnessCounter ? GONE : VISIBLE;
+            binding.pbStoring.setVisibility(visibility);
+        }
     }
 
     private boolean checkPermissions() {
@@ -331,7 +343,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopListening() {
         listener.stop();
-        binding.imageRecord.setVisibility(View.GONE);
+        binding.imageRecord.setVisibility(GONE);
         isListening = false;
     }
 
@@ -633,6 +645,7 @@ public class MainActivity extends AppCompatActivity {
         if (isSuccessful) {
             silenceCounter++;
             binding.tvSilenceCounter.setText(String.format(Locale.getDefault(), "%d записей успешно сохранено", silenceCounter));
+            checkIfAllRecordsStored();
         }
         return true;
     });
