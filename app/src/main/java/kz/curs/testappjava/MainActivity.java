@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 
@@ -203,6 +204,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (samplesCollected == SAMPLES_IN_SECOND) {
+            loudnessCounter++;
+            binding.tvLoudnessCounter.setText(String.format(Locale.getDefault(), "Счетчик записей: %d", loudnessCounter));
             binding.imageRecord.setSelected(true);
             isRecording = true;
             recorderHandler.removeCallbacks(stopRunnable);
@@ -513,7 +516,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void shortToWave(short[] audioData) {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.execute(() -> {
+        Runnable fileStoringRunable = () -> {
+            Message resultMsg = new Message();
             Log.e(TAG, "Is inside the UI Thread = " + (Looper.myLooper() == Looper.getMainLooper()));
             Log.e(TAG, "Len = " + audioData.length);
             //TODO: move to prev. method later
@@ -607,18 +611,16 @@ public class MainActivity extends AppCompatActivity {
                 wavOutputStream.flush();
                 if (wavOutputStream != null) {
                     wavOutputStream.close();
+                    resultMsg.obj = true;
+                    wavFileRecordedHandler.sendMessage(resultMsg);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                resultMsg.obj = false;
+                wavFileRecordedHandler.sendMessage(resultMsg);
             }
-        });
-    }
-
-    private void writeInt(final DataOutputStream output, final int value) throws IOException {
-        output.write(value >> 0);
-        output.write(value >> 8);
-        output.write(value >> 16);
-        output.write(value >> 24);
+        };
+        executorService.execute(fileStoringRunable);
     }
 
     private void writeShort(final DataOutputStream output, final short value) throws IOException {
@@ -626,18 +628,12 @@ public class MainActivity extends AppCompatActivity {
         output.write(value >> 8);
     }
 
-    private void writeString(final DataOutputStream output, final String value) throws IOException {
-        for (int i = 0; i < value.length(); i++) {
-            output.write(value.charAt(i));
+    private final Handler wavFileRecordedHandler = new Handler(Looper.getMainLooper(), message -> {
+        boolean isSuccessful = (boolean) message.obj;
+        if (isSuccessful) {
+            silenceCounter++;
+            binding.tvSilenceCounter.setText(String.format(Locale.getDefault(), "%d записей успешно сохранено", silenceCounter));
         }
-    }
-
-    public static void writeShortLE(DataOutputStream out, short value) {
-        try {
-            out.writeByte(value & 0xFF);
-            out.writeByte((value >> 8) & 0xFF);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+        return true;
+    });
 }
