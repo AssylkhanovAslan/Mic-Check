@@ -362,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private File createRecordWaveFile() {
-        audioFileName = String.format("Audio. %s.wav", recordNameFormat.format(new Date()));
+        audioFileName = String.format("Audio. #%s %s.wav", loudnessCounter,  recordNameFormat.format(new Date()));
         File file = new File(currentExamFolder, audioFileName);
         try {
             Log.e(TAG, "Audio file created = " + file.createNewFile());
