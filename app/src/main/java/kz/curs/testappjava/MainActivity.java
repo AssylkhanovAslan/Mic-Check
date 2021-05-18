@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
@@ -14,6 +15,9 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -128,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                     if (createExamFolder()) {
+                        resetValues();
                         startListening();
                     }
                     Log.e(TAG, "Coefficient = " + THRESHOLD_COEFFICIENT);
@@ -144,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
         stopListening();
         examFinished = true;
         checkIfAllRecordsStored();
+
     }
 
     private void checkIfAllRecordsStored() {
@@ -644,7 +650,43 @@ public class MainActivity extends AppCompatActivity {
             silenceCounter++;
             binding.tvSilenceCounter.setText(String.format(Locale.getDefault(), "%d записей успешно сохранено", silenceCounter));
             checkIfAllRecordsStored();
+            updatePlaybackButtons();
         }
         return true;
     });
+
+    private void resetValues() {
+        loudnessCounter = 0;
+        silenceCounter = 0;
+        referenceAvg = 0;
+        referenceStdev = 0;
+        referenceAmplitudes = new short[441000];
+    }
+
+    private void updatePlaybackButtons() {
+        binding.lltButtons.removeAllViews();
+        for (File playbackFile : currentExamFolder.listFiles()) {
+            Button playbackButton = new Button(this);
+            playbackButton.setText(playbackFile.getName());
+            playbackButton.setOnClickListener((view) -> playTheFile(playbackFile));
+
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            layoutParams.bottomMargin = 20;
+            playbackButton.setLayoutParams(layoutParams);
+
+            binding.lltButtons.addView(playbackButton);
+        }
+    }
+
+    private void playTheFile(File fileToPlay) {
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(this, Uri.fromFile(fileToPlay));
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+            mediaPlayer.setOnCompletionListener(MediaPlayer::release);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
