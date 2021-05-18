@@ -78,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
     private long windowSum = 0;
     private int silenceCounter = 0;
     private int loudnessCounter = 0;
+    ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
 
 
     public final static int TIME_OTP_RESEND_WAIT = 120;
@@ -89,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     public static final long SAMPLES_IN_SECOND = 44100;
     private ArrayList<short[]> audioToStore = new ArrayList<>();
     private DataOutputStream output = null;
+    private File currentExamFolder = null;
 
     private CountDownTimer timer = new CountDownTimer(RECORD_TIME * MILLISECONDS_PER_SECOND, MILLISECONDS_PER_SECOND) {
         public void onTick(long millisUntilFinished) {
@@ -120,9 +122,10 @@ public class MainActivity extends AppCompatActivity {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+                    if (createExamFolder()) {
+                        startListening();
+                    }
                     Log.e(TAG, "Coefficient = " + THRESHOLD_COEFFICIENT);
-                    startListening();
-                    createSignalFile();
                 }
                 timer.start();
             } else {
@@ -165,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
     //region Listener
 
     private void startListening() {
-        listenerExecutor.execute(listener::run);
+        listenerExecutor.execute(listener);
         binding.imageRecord.setVisibility(View.VISIBLE);
         isListening = true;
     }
@@ -180,36 +183,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private final Handler listenerHandler = new Handler(Looper.getMainLooper(), msg -> {
         short[] amplitudes = ((short[]) msg.obj);
         processAmplitudes(amplitudes);
 
         return true;
     });
-    public static double REFERENCE = 0.00002;
-
-    private int bytesOffset = 0;
 
     private void processAmplitudes(short[] amplitudes) {
-        Log.e(TAG, "processAmplitudes. Is inside the UI Thread = " + (Looper.myLooper() == Looper.getMainLooper()));
-        //Log.e(TAG, "Msg received. Size: " + amplitudes.length);
         samplesCollected += amplitudes.length;
-        //binding.tvSamples.setText(String.format("Samples collected: %d", samplesCollected));
 
-//        Log.e(TAG, "Amplitudes len = " + amplitudes.length);
-//
-//        if (isRecording) {
-//            Log.e(TAG, "Adding. Len = " + amplitudes.length);
-//            audioToStore.add(amplitudes);
-//        }
+        if (isRecording) {
+            audioToStore.add(Arrays.copyOf(amplitudes, amplitudes.length));
+        }
 
-        if (samplesCollected <= SAMPLES_IN_SECOND) {
+        if (samplesCollected < SAMPLES_IN_SECOND) {
             binding.tvStatus.setText("Игнорируем первую секунду");
             return;
         }
-//
-//        writeToFile(amplitudes);
+
+        if (samplesCollected == SAMPLES_IN_SECOND) {
+            startRecording();
+            return;
+        }
 
         //region First 10 seconds
         if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
@@ -223,9 +219,11 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
+                stopRecording();
+
                 referenceOffsetIndicator = 0;
                 //Store the values before extremums filter
-                storeAmplitudeArray(referenceAmplitudes, "Before filter");
+                //storeAmplitudeArray(referenceAmplitudes, "Before filter");
                 Log.e(TAG, referenceSum / 441000 + "");
                 //Calculating the average
                 referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
@@ -255,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                storeAmplitudeArray(referenceAmplitudes, "After filter");
+                //storeAmplitudeArray(referenceAmplitudes, "After filter");
                 Log.e(TAG, "Extremums found = " + extremumsCounter);
                 binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
             }
@@ -272,24 +270,19 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (isRecording) {
-            audioToStore.add(Arrays.copyOf(amplitudes, amplitudes.length));
-        }
-
         //TODO: Recover it later and move to method
         filterAmplitudeExtremums(amplitudes);
-        int amplitudeBatchSum = 0;
         for (short amplitude : amplitudes) {
             if (Math.abs(amplitude) > referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev) {
                 if (!isRecording) {
+                    loudnessCounter++;
+                    binding.tvLoudnessCounter.setText(String.format(Locale.getDefault(), "Счетчик записей: %d", loudnessCounter));
                     audioToStore.add(Arrays.copyOf(amplitudes, amplitudes.length));
                     startRecording();
                 } else {
                     continueRecording();
                 }
-                //loudnessCounter++;
                 binding.tvStatus.setText("Шум");
-                //binding.tvLoudnessCounter.setText(String.format("Счетчик шума: %d", loudnessCounter));
             } else {
                 binding.tvStatus.setText("В пределах нормы");
             }
@@ -330,42 +323,6 @@ public class MainActivity extends AppCompatActivity {
 //        }
     }
 
-    private double getAmplitude(short[] buffer) {
-        int bufferSize = buffer.length;
-        double average = 0.0;
-        //Log.e(TAG, "Amplitude size" + buffer.length);
-        int max = Short.MIN_VALUE;
-        for (short s : buffer) {
-
-            average += Math.abs(s);
-            if (max < Math.abs(s)) {
-                max = Math.abs(s);
-            }
-
-        }
-//        Log.e(TAG, "Taken into account: " + bufferSize);
-//
-//        Log.e(TAG, "Max val: " + max);
-        //x=max;
-        double x = average / bufferSize;
-        double db = 0;
-        if (x == 0) {
-            return 0;
-        }
-        // calculating the pascal pressure based on the idea that the max amplitude (between 0 and 32767) is
-        // relative to the pressure
-        double pressure = x / 51805.5336; //the value 51805.5336 can be derived from asuming that x=32767=0.6325 Pa and x=1 = 0.00002 Pa (the reference value)
-        db = (20 * Math.log10(pressure / REFERENCE));
-        if (db > 0) {
-            return db;
-        }
-        return 0;
-    }
-
-    private double getDecibels(int amplitude) {
-        return amplitude;
-    }
-
     private void stopListening() {
         listener.stop();
         binding.imageRecord.setVisibility(View.GONE);
@@ -377,49 +334,14 @@ public class MainActivity extends AppCompatActivity {
     //region Recorder
 
     private void startRecording() {
-//        if (recorder != null)
-//            stopRecording();
-//        recorder = new MediaRecorder();
-//        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
-//        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-//        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-//        String recordFilePath = createRecordFile();
-//        recorder.setOutputFile(recordFilePath);
-//        recorder.setOnErrorListener((mr, what, extra) -> {
-//            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
-//        });
-//        recorder.setOnInfoListener((mediaRecorder, what, extra) -> {
-//            Log.e("MediaRecorder1", String.format("ERROR TYPE: %s\n\tERROR:%s", what, extra));
-//        });
-//        try {
-//            recorder.prepare();
-//            recorder.start();
-//            Log.e(TAG, "Started");
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
         binding.imageRecord.setSelected(true);
         isRecording = true;
         continueRecording();
-
-    }
-
-    private String createRecordFile() {
-        audioFileName = String.format("Audio. %s.mp4", recordNameFormat.format(new Date()));
-        File file = new File(getExternalCacheDir(), audioFileName);
-        try {
-            Log.e(TAG, "Audio file created = " + file.createNewFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        currentRecord = file;
-        return file.getPath();
     }
 
     private File createRecordWaveFile() {
         audioFileName = String.format("Audio. %s.wav", recordNameFormat.format(new Date()));
-        File file = new File(getExternalCacheDir(), audioFileName);
+        File file = new File(currentExamFolder, audioFileName);
         try {
             Log.e(TAG, "Audio file created = " + file.createNewFile());
         } catch (IOException e) {
@@ -447,6 +369,22 @@ public class MainActivity extends AppCompatActivity {
         return file.getPath();
     }
 
+    private boolean createExamFolder() {
+        File file = new File(getExternalCacheDir(), String.format("Exam. %s", recordNameFormat.format(new Date())));
+        try {
+            if (file.mkdir()) {
+                Log.e(TAG, "Exam folder created");
+                currentExamFolder = file;
+                return true;
+            } else {
+                Log.e(TAG, "Exam folder creation failed");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     private final SimpleDateFormat recordNameFormat = new SimpleDateFormat("ddMMyy_HHmmss", Locale.getDefault());
 
     private void continueRecording() {
@@ -460,14 +398,6 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable stopRunnable = this::stopRecording;
 
     private void stopRecording() {
-//        if (recorder == null) {
-//            return;
-//        }
-//        recorderHandler.removeCallbacks(stopRunnable);
-//        recorder.stop();
-//        recorder.release();
-//        recorder = null;
-
         storeRecordedData();
         recorderHandler.removeCallbacks(stopRunnable);
         binding.imageRecord.setSelected(false);
@@ -528,7 +458,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void filterAmplitudeExtremums(short[] amplitudes) {
-        Log.e(TAG, "filterAmplitudeExtremums. Is inside the UI Thread = " + (Looper.myLooper() == Looper.getMainLooper()));
+//        Log.e(TAG, "filterAmplitudeExtremums. Is inside the UI Thread = " + (Looper.myLooper() == Looper.getMainLooper()));
         //Calculating the sum of abs. values
         int amplitudesSum = 0;
         for (short amplitude : amplitudes) {
@@ -575,13 +505,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void storeRecordedData() {
-//        //TODO: create WaveFile
-//        File wavFile = createRecordWaveFile();
-//        if (wavFile == null || !wavFile.exists()) {
-//            return;
-//        }
-
-        //TODO: store list to new variable and merge the data
         List<short[]> toStoreList = audioToStore;
         audioToStore = new ArrayList<>();
 
@@ -592,21 +515,9 @@ public class MainActivity extends AppCompatActivity {
             mergedData = ArrayUtils.addAll(mergedData, data);
         }
 
-//        int len = 0;
-//        for (short[] data : toStoreList) {
-//            len += data.length;
-//        }
-//        short[] mergedData = new short[len];
-//
-//        int i = 0;
-//        for (short[] data : toStoreList) {
-//            for (short value : data) {
-//                mergedData[i] = value;
-//                i++;
-//            }
-//        }
-
-        shortToWave(mergedData);
+        if (mergedData.length != 0) {
+            shortToWave(mergedData);
+        }
         //TODO: Write everything to a file
     }
 
