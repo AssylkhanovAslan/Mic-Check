@@ -272,8 +272,8 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 //storeAmplitudeArray(referenceAmplitudes, "After filter");
-                Log.e(TAG, "Extremums found = " + extremumsCounter);
-                binding.tvStatus.setText("Начинаем прокторинг. Записываем первые 10 секунд прокторинга");
+                //Log.e(TAG, "Extremums found = " + extremumsCounter);
+                binding.tvStatus.setText("Тишина! Идет экзамен");
             }
 
             return;
@@ -300,9 +300,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     continueRecording();
                 }
-                binding.tvStatus.setText("Шум");
             } else {
-                binding.tvStatus.setText("В пределах нормы");
             }
         }
 
