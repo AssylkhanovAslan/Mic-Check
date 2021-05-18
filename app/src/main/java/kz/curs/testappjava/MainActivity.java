@@ -203,7 +203,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (samplesCollected == SAMPLES_IN_SECOND) {
-            startRecording();
+            binding.imageRecord.setSelected(true);
+            isRecording = true;
+            recorderHandler.removeCallbacks(stopRunnable);
+            recorderHandler.postDelayed(stopRunnable, 10 * SAMPLES_IN_SECOND);
             return;
         }
 
@@ -490,19 +493,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //endregion
-
-    //convert short to byte
-    private byte[] short2byte(short[] sData) {
-        int shortArrsize = sData.length;
-        byte[] bytes = new byte[shortArrsize * 2];
-        for (int i = 0; i < shortArrsize; i++) {
-            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
-            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
-            sData[i] = 0;
-        }
-        return bytes;
-
-    }
 
     private void storeRecordedData() {
         List<short[]> toStoreList = audioToStore;
