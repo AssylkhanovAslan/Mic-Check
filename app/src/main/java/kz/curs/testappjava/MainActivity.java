@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private int loudnessCounter = 0;
     ExecutorService listenerExecutor = Executors.newSingleThreadExecutor();
     private boolean examFinished = true;
+    private MediaPlayer mediaPlayer;
 
 
     public final static int TIME_OTP_RESEND_WAIT = 120;
@@ -679,12 +680,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void playTheFile(File fileToPlay) {
-        MediaPlayer mediaPlayer = new MediaPlayer();
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.release();
+        }
+        mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource(this, Uri.fromFile(fileToPlay));
             mediaPlayer.prepare();
             mediaPlayer.start();
-            mediaPlayer.setOnCompletionListener(MediaPlayer::release);
+            mediaPlayer.setOnCompletionListener(mp -> {
+                mp.release();
+                mediaPlayer = null;
+            });
         } catch (IOException e) {
             e.printStackTrace();
         }
