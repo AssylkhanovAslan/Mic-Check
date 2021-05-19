@@ -150,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
         stopListening();
         examFinished = true;
         checkIfAllRecordsStored();
-
+        timer.cancel();
     }
 
     private void checkIfAllRecordsStored() {
@@ -662,6 +662,7 @@ public class MainActivity extends AppCompatActivity {
         referenceAvg = 0;
         referenceStdev = 0;
         referenceAmplitudes = new short[441000];
+        referenceOffsetIndicator = 0;
     }
 
     private void updatePlaybackButtons() {
