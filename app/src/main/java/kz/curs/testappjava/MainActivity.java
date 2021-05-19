@@ -148,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
     private void stop() {
         isMaxSet = true;
         stopListening();
+        stopRecording();
         examFinished = true;
         checkIfAllRecordsStored();
         timer.cancel();
@@ -663,6 +664,11 @@ public class MainActivity extends AppCompatActivity {
         referenceStdev = 0;
         referenceAmplitudes = new short[441000];
         referenceOffsetIndicator = 0;
+        binding.tvSilenceCounter.setText("");
+        binding.tvLoudnessCounter.setText("");
+        binding.tvThreshold.setText("");
+        binding.tvStatus.setText("");
+        binding.lltButtons.removeAllViews();
     }
 
     private void updatePlaybackButtons() {
