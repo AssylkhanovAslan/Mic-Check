@@ -16,7 +16,7 @@
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.TestAppJava" >
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".KotlinActivity">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER"/>
                 <action android:name="android.intent.action.MAIN"/>
