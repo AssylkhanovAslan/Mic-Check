@@ -1,5 +1,9 @@
 package kz.curs.testappjava;
 
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
+import static kz.curs.testappjava.AudioReceiver.BUFF_SIZE;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
@@ -45,11 +49,9 @@ import java.util.concurrent.Executors;
 
 import kz.curs.testappjava.databinding.ActivityMainBinding;
 
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
-import static kz.curs.testappjava.AudioReceiver.BUFF_SIZE;
-
 public class MainActivity extends AppCompatActivity {
+
+    private AmplitudeProcessor amplitudeProcessor = new AmplitudeProcessor();
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
@@ -237,33 +239,38 @@ public class MainActivity extends AppCompatActivity {
         if (samplesCollected <= 10 * SAMPLES_IN_SECOND) {
             binding.tvStatus.setText("Записываем данные для сравнения");
 
-            for (short amplitude : amplitudes) {
-                referenceSum += Math.abs(amplitude);
-                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
-                referenceOffsetIndicator++;
-            }
+
+            //Step 1
+            amplitudeProcessor.addAmplitudesToReference(amplitudes);
+//            for (short amplitude : amplitudes) {
+//                referenceSum += Math.abs(amplitude);
+//                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
+//                referenceOffsetIndicator++;
+//            }
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
                 stopRecording();
 
-                referenceOffsetIndicator = 0;
                 //Store the values before extremums filter
                 //storeAmplitudeArray(referenceAmplitudes, "Before filter");
                 Log.e(TAG, referenceSum / 441000 + "");
                 //Calculating the average
-                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+                amplitudeProcessor.estimateReferences();
+                //Step 2.
+//                referenceOffsetIndicator = 0;
+//                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
 
-                //Calculating the stdev
-                int sum = 0;
-                for (short amplitude : referenceAmplitudes) {
-                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
-                }
-                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
+//                //Calculating the stdev
+//                int sum = 0;
+//                for (short amplitude : referenceAmplitudes) {
+//                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
+//                }
+//                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
                 Log.e(TAG, "Reference avg = " + referenceAvg);
                 Log.e(TAG, "Reference stdev = " + referenceStdev);
 
-                binding.tvThreshold.setText("Пороговое значение: " + (referenceAvg + THRESHOLD_COEFFICIENT * referenceStdev));
+                binding.tvThreshold.setText("Пороговое значение: " + (amplitudeProcessor.referenceAvg + THRESHOLD_COEFFICIENT * amplitudeProcessor.referenceStdev));
 
                 //Removing the extremums
                 int extremumsCounter = 0;
