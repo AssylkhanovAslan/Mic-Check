@@ -52,6 +52,7 @@ import kz.curs.testappjava.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity {
 
     private AmplitudeProcessor amplitudeProcessor = new AmplitudeProcessor();
+    private AmplitudeProcessorKt amplitudeProcessorKt = new AmplitudeProcessorKt();
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
@@ -242,11 +243,12 @@ public class MainActivity extends AppCompatActivity {
 
             //Step 1
             amplitudeProcessor.addAmplitudesToReference(amplitudes);
-//            for (short amplitude : amplitudes) {
-//                referenceSum += Math.abs(amplitude);
-//                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
-//                referenceOffsetIndicator++;
-//            }
+            amplitudeProcessorKt.addAmplitudesToReference(amplitudes);
+            for (short amplitude : amplitudes) {
+                referenceSum += Math.abs(amplitude);
+                referenceAmplitudes[referenceOffsetIndicator] = amplitude;
+                referenceOffsetIndicator++;
+            }
 
 
             if (samplesCollected == 10 * SAMPLES_IN_SECOND) {
@@ -257,20 +259,25 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, referenceSum / 441000 + "");
                 //Calculating the average
                 amplitudeProcessor.estimateReferences();
+                amplitudeProcessorKt.estimateReferences();
                 //Step 2.
-//                referenceOffsetIndicator = 0;
-//                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
+                referenceOffsetIndicator = 0;
+                referenceAvg = (int) (referenceSum / (10 * SAMPLES_IN_SECOND));
 
 //                //Calculating the stdev
-//                int sum = 0;
-//                for (short amplitude : referenceAmplitudes) {
-//                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
-//                }
-//                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
+                int sum = 0;
+                for (short amplitude : referenceAmplitudes) {
+                    sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
+                }
+                referenceStdev = (long) Math.sqrt(sum / (10 * SAMPLES_IN_SECOND));
                 Log.e(TAG, "Reference avg = " + referenceAvg);
                 Log.e(TAG, "Reference stdev = " + referenceStdev);
 
-                binding.tvThreshold.setText("Пороговое значение: " + (amplitudeProcessor.referenceAvg + THRESHOLD_COEFFICIENT * amplitudeProcessor.referenceStdev));
+                String testText = "Пороговое значение: ";
+                testText += "\nOriginal: Avg = " + referenceAvg + " Stdev = " + referenceStdev;
+                testText += "\nJava: Avg = " + amplitudeProcessor.referenceAvg + " Stdev = " + amplitudeProcessor.referenceStdev;
+                testText += "\nKotlin: Avg = " + amplitudeProcessorKt.getReferenceAvg() + " Stdev = " + amplitudeProcessorKt.getReferenceStdev();
+                binding.tvThreshold.setText(testText);
 
                 //Removing the extremums
                 int extremumsCounter = 0;

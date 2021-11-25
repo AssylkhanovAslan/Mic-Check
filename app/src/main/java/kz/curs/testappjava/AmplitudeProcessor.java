@@ -35,7 +35,8 @@ public class AmplitudeProcessor {
         for (short amplitude : referenceAmplitudes) {
             sum += Math.pow((Math.abs(amplitude) - referenceAvg), 2);
         }
-        referenceStdev = (long) Math.sqrt(sum / 440999.0);
+        referenceStdev = (long) Math.sqrt(sum / 441000.0);
+        Log.e(TAG, "Reference stdev in long = " + referenceStdev);
     }
 
 
